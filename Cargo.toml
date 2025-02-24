@@ -1,0 +1,12 @@
+[package]
+name = "urng"
+version = "0.1.0"
+edition = "2021"
+
+[msrv]
+rust-version = "1.59"
+
+[dependencies]
+
+[dev-dependencies]
+rand = "0.9"
