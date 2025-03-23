@@ -1,4 +1,6 @@
+#[cfg(all(unix, feature = "std"))]
 use std::fs::File;
+#[cfg(all(unix, feature = "std"))]
 use std::io::Read;
 
 pub trait RandomDevice {
@@ -28,10 +30,12 @@ impl FromRaw for u128 {
     }
 }
 
+#[cfg(all(unix, feature = "std"))]
 pub struct DevRandom {
     dev_random: File,
 }
 
+#[cfg(all(unix, feature = "std"))]
 impl DevRandom {
     fn new() -> Self {
         Self {
@@ -40,6 +44,14 @@ impl DevRandom {
     }
 }
 
+#[cfg(all(unix, feature = "std"))]
+impl Default for DevRandom {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(all(unix, feature = "std"))]
 impl RandomDevice for DevRandom {
     fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
         let mut result = [0; N];
@@ -50,22 +62,57 @@ impl RandomDevice for DevRandom {
     }
 }
 
+#[cfg(feature = "getrandom")]
+pub struct GetRandom;
+
+#[cfg(feature = "getrandom")]
+impl GetRandom {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+#[cfg(feature = "getrandom")]
+impl Default for GetRandom {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "getrandom")]
+impl RandomDevice for GetRandom {
+    fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
+        let mut result = [0; N];
+        getrandom::fill(&mut result).expect("getrandom::fill failed");
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::devices::{DevRandom, RandomDevice};
+    use super::*;
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature = "std"))]
     #[test]
-    fn generate_64_bit_seed() {
+    fn generate_64_bit_seed_with_dev_random() {
         let seed1: u64 = DevRandom::new().seed();
         let seed2: u64 = DevRandom::new().seed();
         assert_ne!(seed1, seed2);
     }
 
+    #[cfg(all(unix, feature = "std"))]
     #[test]
-    fn generate_128_bit_seed() {
+    fn generate_128_bit_seed_dev_random() {
         let seed1: u64 = DevRandom::new().seed();
         let seed2: u64 = DevRandom::new().seed();
+        assert_ne!(seed1, seed2);
+    }
+
+    #[cfg(feature = "getrandom")]
+    #[test]
+    fn generate_64_bit_seed_with_gev_random() {
+        let seed1: u64 = GetRandom::new().seed();
+        let seed2: u64 = GetRandom::new().seed();
         assert_ne!(seed1, seed2);
     }
 }
