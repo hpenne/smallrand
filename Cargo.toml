@@ -13,3 +13,4 @@ getrandom = []
 
 [dependencies]
 getrandom = "0.3.2"
+rand = "0.9.0"

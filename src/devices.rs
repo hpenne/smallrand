@@ -37,7 +37,7 @@ pub struct DevRandom {
 
 #[cfg(all(unix, feature = "std"))]
 impl DevRandom {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             dev_random: File::open("/dev/random").expect("Failed to open /dev/random"),
         }
@@ -67,7 +67,7 @@ pub struct GetRandom;
 
 #[cfg(feature = "getrandom")]
 impl GetRandom {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 }
