@@ -1,6 +1,6 @@
 use crate::devices::RandomDevice;
-use std::collections::Bound;
-use std::ops::RangeBounds;
+use core::ops::Bound;
+use core::ops::RangeBounds;
 
 pub trait Rng {
     fn random_u32(&mut self) -> u32;
@@ -24,16 +24,14 @@ pub trait Rng {
         T::range_from_rng(self, range)
     }
 
-    #[cfg(feature = "std")]
     fn iter<T>(&mut self) -> impl Iterator<Item = T>
     where
         T: ValueFromRng,
         Self: Sized,
     {
-        std::iter::from_fn(|| Some(self.random()))
+        core::iter::from_fn(|| Some(self.random()))
     }
 
-    #[cfg(feature = "std")]
     fn iter_u8(&mut self) -> impl Iterator<Item = u8>
     where
         Self: Sized,
