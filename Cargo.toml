@@ -2,14 +2,12 @@
 name = "urng"
 version = "0.1.0"
 edition = "2021"
-
-[msrv]
 rust-version = "1.59"
 
 [features]
-default = ["getrandom", "std"]
+default = ["std"]
 std = []
-getrandom = []
 
 [dependencies]
+[target.'cfg(not(unix))'.dependencies]
 getrandom = "0.3.2"

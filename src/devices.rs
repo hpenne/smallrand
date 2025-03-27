@@ -62,24 +62,24 @@ impl RandomDevice for DevRandom {
     }
 }
 
-#[cfg(feature = "getrandom")]
+#[cfg(all(not(unix), feature = "std"))]
 pub struct GetRandom;
 
-#[cfg(feature = "getrandom")]
+#[cfg(all(not(unix), feature = "std"))]
 impl GetRandom {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-#[cfg(feature = "getrandom")]
+#[cfg(all(not(unix), feature = "std"))]
 impl Default for GetRandom {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "getrandom")]
+#[cfg(all(not(unix), feature = "std"))]
 impl RandomDevice for GetRandom {
     fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
         let mut result = [0; N];
@@ -108,7 +108,7 @@ mod tests {
         assert_ne!(seed1, seed2);
     }
 
-    #[cfg(feature = "getrandom")]
+    #[cfg(all(not(unix), feature = "std"))]
     #[test]
     fn generate_64_bit_seed_with_gev_random() {
         let seed1: u64 = GetRandom::new().seed();

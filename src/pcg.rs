@@ -1,3 +1,7 @@
+#[cfg(all(unix, feature = "std"))]
+pub use crate::devices::DevRandom;
+#[cfg(all(not(unix), feature = "std"))]
+use crate::GetRandom;
 use crate::{RandomDevice, RangeFromRng, Rng, ValueFromRng};
 use std::ops::RangeBounds;
 
@@ -14,15 +18,19 @@ impl PcgXsl128_64 {
     const PCG_DEFAULT_MULTIPLIER_128: u128 = 0x2360_ED05_1FC6_5DA4_4385_DF64_9FCC_F645_u128;
     const PCG_DEFAULT_INCREMENT_128: u128 = 0x5851_F42D_4C95_7F2D_1405_7B7E_F767_814F;
 
-    // This is "pcg_setseq_128_srandom_r" from the C reference implementation
-    pub fn new_with_increment(seed: u128, inc: u128) -> Self {
-        let mut rng = Self {
-            state: 0,
-            inc: (inc << 1) | 1,
-        };
-        rng.next();
-        rng.state = rng.state.wrapping_add(seed);
-        rng.next();
+    /// Creates a new PCG random generator with a seed from a random device.
+    ///
+    /// # Arguments
+    ///
+    /// * `random_device`: The device to get the seed from
+    ///
+    /// returns: PcgXsl128_64
+    #[cfg(feature = "std")]
+    pub fn new() -> Self {
+        #[cfg(unix)]
+        let rng = Self::from_device(&mut DevRandom::new());
+        #[cfg(not(unix))]
+        let rng = Self::from_device(&mut GetRandom::new());
         rng
     }
 
@@ -33,11 +41,25 @@ impl PcgXsl128_64 {
     /// * `random_device`: The device to get the seed from
     ///
     /// returns: PcgXsl128_64
-    pub fn new<T>(random_device: &mut T) -> Self
+    pub fn from_device<T>(random_device: &mut T) -> Self
     where
         T: RandomDevice,
     {
         Self::new_with_increment(random_device.seed(), Self::PCG_DEFAULT_INCREMENT_128)
+    }
+
+    /// Creates a new PCG random generator with a specified seed.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed`: The seed to use
+    ///
+    /// returns: PcgXsl128_64
+    pub fn from_seed<T>(seed: u128) -> Self
+    where
+        T: RandomDevice,
+    {
+        Self::new_with_increment(seed, Self::PCG_DEFAULT_INCREMENT_128)
     }
 
     /// Generates a single random integer
@@ -49,9 +71,9 @@ impl PcgXsl128_64 {
     /// # Examples
     ///
     /// ```
-    /// #[cfg(feature = "getrandom")]
+    /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let mut rng = urng::PcgXsl128_64::new();
     /// let random_value : u32 = rng.random();
     /// }
     /// ```
@@ -76,9 +98,9 @@ impl PcgXsl128_64 {
     /// # Examples
     ///
     /// ```
-    /// #[cfg(feature = "getrandom")]
+    /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let mut rng = urng::PcgXsl128_64::new();
     /// let random_value : u32 = rng.range(..42);
     /// }
     /// ```
@@ -99,9 +121,9 @@ impl PcgXsl128_64 {
     /// # Examples
     ///
     /// ```
-    /// #[cfg(feature = "getrandom")]
+    /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let mut rng = urng::PcgXsl128_64::new();
     /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
     /// }
     /// ```
@@ -122,9 +144,9 @@ impl PcgXsl128_64 {
     /// # Examples
     ///
     /// ```
-    /// #[cfg(feature = "getrandom")]
+    /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let mut rng = urng::PcgXsl128_64::new();
     /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
     /// }
     /// ```
@@ -134,6 +156,18 @@ impl PcgXsl128_64 {
         Self: Sized,
     {
         <Self as Rng>::iter_u8(self)
+    }
+
+    // This is "pcg_setseq_128_srandom_r" from the C reference implementation
+    fn new_with_increment(seed: u128, inc: u128) -> Self {
+        let mut rng = Self {
+            state: 0,
+            inc: (inc << 1) | 1,
+        };
+        rng.next();
+        rng.state = rng.state.wrapping_add(seed);
+        rng.next();
+        rng
     }
 
     // This is "pcg_setseq_128_step_r" from the C reference implementation
@@ -150,6 +184,11 @@ impl PcgXsl128_64 {
     }
 }
 
+impl Default for PcgXsl128_64 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Rng for PcgXsl128_64 {
     fn random_u32(&mut self) -> u32 {
         self.random_u64() as u32
@@ -174,7 +213,7 @@ mod tests {
     }
 
     fn pcg() -> PcgXsl128_64 {
-        PcgXsl128_64::new(&mut DummyDevice {})
+        PcgXsl128_64::from_device(&mut DummyDevice {})
     }
 
     #[test]
