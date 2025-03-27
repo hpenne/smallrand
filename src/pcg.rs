@@ -1,5 +1,6 @@
-use crate::{RandomDevice, Rng, ValueFromRng};
+use crate::{RandomDevice, RangeFromRng, Rng, ValueFromRng};
 use rand::random;
+use std::ops::RangeBounds;
 
 // This is a PCG (https://www.pcg-random.org) PRNG (specifically the "pcg_state_setseq_128")
 pub struct PcgXsl128_64 {
@@ -58,6 +59,33 @@ impl PcgXsl128_64 {
         Self: Sized,
     {
         <Self as Rng>::random(self)
+    }
+
+    /// Generates a single random integer in a specified range.
+    /// The distribution is strictly uniform.
+    ///
+    /// # Arguments
+    ///
+    /// * `range`: The range of the uniform distribution.
+    ///
+    /// returns: A random integer
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[cfg(feature = "getrandom")]
+    /// {
+    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let random_value : u32 = rng.range(..42);
+    /// }
+    /// ```
+    fn range<T, R>(&mut self, range: R) -> T
+    where
+        T: RangeFromRng,
+        R: RangeBounds<T>,
+        Self: Sized,
+    {
+        <Self as Rng>::range(self, range)
     }
 
     // This is "pcg_setseq_128_step_r" from the C reference implementation
