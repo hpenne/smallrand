@@ -1,9 +1,18 @@
 use core::ops::Bound;
 use core::ops::RangeBounds;
 
+/// This trait that all PRNGs must implement.
+/// It defines default implementations of functions
+/// to be supported by all PRNGs,
+/// as well the declarations of two internal helper
+/// functions that provide values to these functions.
 pub trait Rng {
+    /// Generates a random u32.
+    /// Used by other functions as input.
     fn random_u32(&mut self) -> u32;
 
+    /// Generates a random u32.
+    /// Used by other functions as input.
     fn random_u64(&mut self) -> u64;
 
     /// Generates a single random integer
@@ -38,6 +47,10 @@ pub trait Rng {
         T::range_from_rng(self, range)
     }
 
+    /// Provides an iterator that emits random values.
+    ///
+    /// returns: An iterator that outputs random values. Never None.
+    ///
     fn iter<T>(&mut self) -> impl Iterator<Item = T>
     where
         T: ValueFromRng,
@@ -46,6 +59,11 @@ pub trait Rng {
         core::iter::from_fn(|| Some(self.random()))
     }
 
+    /// Provides an iterator that emits random u8 values.
+    /// Same as the generic variant, but more efficient.
+    ///
+    /// returns: An iterator that outputs random u8 values. Never None.
+    ///
     fn iter_u8(&mut self) -> impl Iterator<Item = u8>
     where
         Self: Sized,

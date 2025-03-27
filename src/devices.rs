@@ -3,9 +3,17 @@ use std::fs::File;
 #[cfg(all(unix, feature = "std"))]
 use std::io::Read;
 
+/// This is a trait for random devices.
+/// Random devices are random sources used to produce seeds for RNGs.
 pub trait RandomDevice {
+    /// Generates an array of random bytes.
+    ///
+    /// returns: Array of random u8 values
     fn seed_bytes<const N: usize>(&mut self) -> [u8; N];
 
+    /// Generates an integer seed value.
+    ///
+    /// returns: Integer seed
     fn seed<T: FromRaw>(&mut self) -> T
     where
         Self: Sized,
@@ -30,6 +38,7 @@ impl FromRaw for u128 {
     }
 }
 
+/// This is a random device that generates seeds by reading from /dev/random
 #[cfg(all(unix, feature = "std"))]
 pub struct DevRandom {
     dev_random: File,
@@ -37,6 +46,7 @@ pub struct DevRandom {
 
 #[cfg(all(unix, feature = "std"))]
 impl DevRandom {
+    /// Creates a new DevRandom device
     pub fn new() -> Self {
         Self {
             dev_random: File::open("/dev/random").expect("Failed to open /dev/random"),
@@ -62,11 +72,13 @@ impl RandomDevice for DevRandom {
     }
 }
 
+/// This is a random device that generates seeds using the getrandom crate.
 #[cfg(all(not(unix), feature = "std"))]
 pub struct GetRandom;
 
 #[cfg(all(not(unix), feature = "std"))]
 impl GetRandom {
+    /// Creates a new GetRandom device
     pub fn new() -> Self {
         Self {}
     }

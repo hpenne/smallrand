@@ -1,11 +1,12 @@
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevRandom;
+use crate::rngs::{RangeFromRng, ValueFromRng};
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
-use crate::{RandomDevice, RangeFromRng, Rng, ValueFromRng};
+use crate::{RandomDevice, Rng};
 use std::ops::RangeBounds;
 
-/// A PCG (https://www.pcg-random.org) random generator (specifically the "pcg_state_setseq_128")
+/// A PCG (<https://www.pcg-random.org>) random generator (specifically the "pcg_state_setseq_128").
 /// This is an efficient PRNG with good random properties, but not cryptographically secure:
 /// An attacker will be able to calculate the internal state by observing
 /// a number of samples, and thus predict future output.
