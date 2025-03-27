@@ -54,14 +54,6 @@ pub trait Rng {
     }
 }
 
-pub fn random<T, R>(rng: &mut R) -> T
-where
-    T: ValueFromRng,
-    R: Rng,
-{
-    T::value_from_rng(rng)
-}
-
 pub trait ValueFromRng {
     fn value_from_rng<T: Rng>(device: &mut T) -> Self;
 }

@@ -8,4 +8,4 @@ pub use devices::DevRandom;
 pub use devices::GetRandom;
 pub use devices::{FromRaw, RandomDevice};
 pub use pcg::PcgXsl128_64;
-pub use rngs::{random, RangeFromRng, Rng, ValueFromRng};
+pub use rngs::{RangeFromRng, Rng, ValueFromRng};

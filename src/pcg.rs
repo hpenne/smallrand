@@ -1,8 +1,10 @@
 use crate::{RandomDevice, RangeFromRng, Rng, ValueFromRng};
-use rand::random;
 use std::ops::RangeBounds;
 
-// This is a PCG (https://www.pcg-random.org) PRNG (specifically the "pcg_state_setseq_128")
+/// A PCG (https://www.pcg-random.org) random generator (specifically the "pcg_state_setseq_128")
+/// This is an efficient PRNG with good random properties, but not cryptographically secure:
+/// An attacker will be able to calculate the internal state by observing
+/// a number of samples, and thus predict future output.
 pub struct PcgXsl128_64 {
     state: u128,
     inc: u128,
@@ -53,6 +55,7 @@ impl PcgXsl128_64 {
     /// let random_value : u32 = rng.random();
     /// }
     /// ```
+    #[inline(always)]
     pub fn random<T>(&mut self) -> T
     where
         T: ValueFromRng,
@@ -79,13 +82,58 @@ impl PcgXsl128_64 {
     /// let random_value : u32 = rng.range(..42);
     /// }
     /// ```
-    fn range<T, R>(&mut self, range: R) -> T
+    #[inline(always)]
+    pub fn range<T, R>(&mut self, range: R) -> T
     where
         T: RangeFromRng,
         R: RangeBounds<T>,
         Self: Sized,
     {
         <Self as Rng>::range(self, range)
+    }
+
+    /// Provides an iterator that emits random values.
+    ///
+    /// returns: An iterator that outputs random values. Never None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[cfg(feature = "getrandom")]
+    /// {
+    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
+    /// }
+    /// ```
+    #[inline(always)]
+    pub fn iter<T>(&mut self) -> impl Iterator<Item = T> + use<'_, T>
+    where
+        T: ValueFromRng,
+        Self: Sized,
+    {
+        <Self as Rng>::iter(self)
+    }
+
+    /// Provides an iterator that emits random u8 values.
+    /// Same as the generic variant, but more efficient.
+    ///
+    /// returns: An iterator that outputs random u8 values. Never None.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[cfg(feature = "getrandom")]
+    /// {
+    /// let mut rng = urng::PcgXsl128_64::new(&mut urng::GetRandom::new());
+    /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
+    /// }
+    /// ```
+    #[inline(always)]
+    pub fn iter_u8(&mut self) -> impl Iterator<Item = u8> + use<'_>
+    where
+        Self: Sized,
+    {
+        <Self as Rng>::iter_u8(self)
     }
 
     // This is "pcg_setseq_128_step_r" from the C reference implementation
