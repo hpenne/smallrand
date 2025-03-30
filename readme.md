@@ -3,12 +3,12 @@ smallrand
 
 Random number generation with absolutely minimal dependencies and no unsafe code.
 
-This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), based on the
-PCG (<https://www.pcg-random.org>) random generator algorithm (which is also implemented by `rand`).
+This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the "xoshiro256++"
+algorithm (<https://prng.di.unimi.it>), which is the one used by `rand` for its `SmallRng`.
 
 The crate is intended to be easy to audit. Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and
 that is only used on non-Linux platforms. It can also be built as non-std, in which case `getrandom` is not used at
-all (but you´ll have to provide the seed yourself).
+all (but you´ll then have to provide the seed yourself).
 
 Quick start
 -----
@@ -28,10 +28,17 @@ FAQ
     - `rand` is very large and difficult to audit. It's dependencies (as of 0.9) include `zerocopy`, which contains a
       huge amount of
       unsafe code.
-    - Its API encourages you to use `thread_rng` to create RNGs. This creates unnecessary global state, which is almost
+    - Its API encourages you to use thread local RNG instances. This creates unnecessary (thread) global state, which is
+      almost
       always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your code is
       async. Furthermore, it is a potential security risk (see [below](#the-juniper-incident)).
     - `smallrand` does not require you to import any traits or anything else beyond the RNG you're using.
+    - This crate compiles much faster than `rand`.
+* Why would I choose this over `fastrand`
+    - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++.
+    - When you use `fastrand` to generate integers in a range, it does not generate a uniform distribution (as of March
+      30th 2025. The code uses a simple modulus, which is plain wrong. This call the quality of the whole crate into
+      question.
 
 ## The Juniper incident
 
