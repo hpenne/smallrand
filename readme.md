@@ -25,5 +25,13 @@ FAQ
 ---
 
 * Why would I choose this over `rand`?
-    - `rand` is very large and difficult to audit. It's dependencies include `zerocopy`, which contains a huge amount of
+    - `rand` is very large and difficult to audit. It's dependencies (as of 0.9) include `zerocopy`, which contains a
+      huge amount of
       unsafe code.
+    - Its API encourages you to use `thread_rng` to create RNGs. This creates unnecessary global state, which is almost
+      always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your code is
+      async. Furthermore, it is a potential security risk (see [below](#the-juniper-incident)).
+    - `smallrand` does not require you to import any traits or anything else beyond the RNG you're using.
+
+## The Juniper incident
+

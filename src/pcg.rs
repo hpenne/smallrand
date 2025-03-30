@@ -56,10 +56,7 @@ impl PcgXsl128_64 {
     /// * `seed`: The seed to use
     ///
     /// returns: PcgXsl128_64
-    pub fn from_seed<T>(seed: u128) -> Self
-    where
-        T: RandomDevice,
-    {
+    pub fn from_seed(seed: u128) -> Self {
         Self::new_with_increment(seed, Self::PCG_DEFAULT_INCREMENT_128)
     }
 

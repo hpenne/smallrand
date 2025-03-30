@@ -1,6 +1,7 @@
 mod devices;
 mod pcg;
 mod rngs;
+mod xoshiro;
 
 #[cfg(all(unix, feature = "std"))]
 pub use devices::DevRandom;
