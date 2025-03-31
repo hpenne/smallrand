@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 #[cfg(all(unix, feature = "std"))]
 use std::fs::File;
 #[cfg(all(unix, feature = "std"))]

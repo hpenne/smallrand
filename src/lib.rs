@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod devices;
 mod rngs;
 mod xoshiro;

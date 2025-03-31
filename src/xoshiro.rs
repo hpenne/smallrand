@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevRandom;
 use crate::rngs::{RangeFromRng, ValueFromRng};
