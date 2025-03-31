@@ -72,7 +72,7 @@ impl Xoshiro256pp {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::Xoshiro256pp::new();
+    /// let mut rng = smallrand::Xoshiro256pp::new();
     /// let random_value : u32 = rng.random();
     /// }
     /// ```
@@ -99,7 +99,7 @@ impl Xoshiro256pp {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::Xoshiro256pp::new();
+    /// let mut rng = smallrand::Xoshiro256pp::new();
     /// let random_value : u32 = rng.range(..42);
     /// }
     /// ```
@@ -122,7 +122,7 @@ impl Xoshiro256pp {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::Xoshiro256pp::new();
+    /// let mut rng = smallrand::Xoshiro256pp::new();
     /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
     /// }
     /// ```
@@ -145,7 +145,7 @@ impl Xoshiro256pp {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = urng::Xoshiro256pp::new();
+    /// let mut rng = smallrand::Xoshiro256pp::new();
     /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
     /// }
     /// ```
