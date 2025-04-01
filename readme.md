@@ -13,12 +13,12 @@ all (but you´ll then have to provide the seed yourself).
 Quick start
 -----
 
-```toml
+```rust
 use smallrand;
 let mut rng = DefaultRng::new();
 let coin_flip : bool = rng.random();
 let some_int = rng.random::<u32>();
-let uniformly_distributed : u32 = rng.range(0.. = 42);
+let uniformly_distributed : u32 = rng.range(0..= 42);
 ```
 
 FAQ
@@ -33,11 +33,12 @@ FAQ
       always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your code is
       async. Furthermore, it is a potential security risk (see [below](#the-juniper-incident)).
     - `smallrand` does not require you to import any traits or anything else beyond the RNG you're using.
+    - This crate has minimal dependencies and does not intend to change much, so you won't have to update it very often.
     - This crate compiles much faster than `rand`.
 * Why would I choose this over `fastrand`
     - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++.
     - When you use `fastrand` to generate integers in a range, it does not generate a uniform distribution (as of March
-      30th 2025. The code uses a simple modulus, which is plain wrong. This call the quality of the whole crate into
+      30th 2025). The code uses a simple modulus, which is plain wrong. This call the quality of the whole crate into
       question.
 
 ## The Juniper incident
