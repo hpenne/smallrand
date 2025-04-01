@@ -12,11 +12,28 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            toolchain: stable
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            toolchain: stable
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            variant: MSRV
+            toolchain: 1.59.0
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cargo build --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Build with no-default-features
+        run: cargo build --verbose --no-default-features
+      - name: Run tests with no-default-features
+        run: cargo test --verbose --no-default-features
