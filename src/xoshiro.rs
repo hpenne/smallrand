@@ -180,11 +180,13 @@ impl Xoshiro256pp {
     }
 }
 
+#[cfg(feature = "std")]
 impl Default for Xoshiro256pp {
     fn default() -> Self {
         Self::new()
     }
 }
+
 impl Rng for Xoshiro256pp {
     fn random_u32(&mut self) -> u32 {
         self.random_u64() as u32
