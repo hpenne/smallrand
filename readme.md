@@ -10,7 +10,7 @@ This crate provides a lightweight alternative to [`rand`](https://crates.io/crat
 algorithm (<https://prng.di.unimi.it>), which is the one used by `rand` for its `SmallRng`.
 
 The crate is intended to be easy to audit. Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and
-that is only used on non-Linux platforms. It can also be built as non-std, in which case `getrandom` is not used at
+that is only used on non-Linux/Unix platforms. It can also be built as no-std, in which case `getrandom` is not used at
 all (but you´ll then have to provide the seed yourself).
 
 Quick start
@@ -28,12 +28,10 @@ FAQ
 ---
 
 * Why would I choose this over `rand`?
-    - `rand` is very large and difficult to audit. It's dependencies (as of 0.9) include `zerocopy`, which contains a
-      huge amount of
-      unsafe code.
+    - `rand` is very large and difficult to audit. Its dependencies (as of 0.9) include `zerocopy`, which contains a
+      huge amount of unsafe code.
     - Its API encourages you to use thread local RNG instances. This creates unnecessary (thread) global state, which is
-      almost
-      always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your code is
+      almost always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your code is
       async. Furthermore, it is a potential security risk (see [below](#the-juniper-incident)).
     - `smallrand` does not require you to import any traits or anything else beyond the RNG you're using.
     - This crate has minimal dependencies and does not intend to change much, so you won't have to update it very often.
