@@ -1,6 +1,9 @@
 smallrand
 =========
 
+[![Test Status](https://github.com/hpenne/smallrand/actions/workflows/rust.yml/badge.svg?event=push)](https://github.com/hpenne/smallrand/actions)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
+
 Random number generation with absolutely minimal dependencies and no unsafe code.
 
 This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the "xoshiro256++"
@@ -18,7 +21,7 @@ use smallrand;
 let mut rng = DefaultRng::new();
 let coin_flip : bool = rng.random();
 let some_int = rng.random::<u32>();
-let uniformly_distributed : u32 = rng.range(0..= 42);
+let uniformly_distributed : u32 = rng.range(0..=42);
 ```
 
 FAQ
