@@ -113,7 +113,7 @@ impl ValueFromRng for u64 {
 
 impl ValueFromRng for u128 {
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
-        u128::from(rng.random_u64()) << 64 | u128::from(rng.random_u64())
+        (u128::from(rng.random_u64()) << 64) | u128::from(rng.random_u64())
     }
 }
 
