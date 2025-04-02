@@ -52,6 +52,8 @@ impl Xoshiro256pp {
     }
 
     /// Creates a new xoshiro256++ random generator with a specified seed.
+    /// The "SplitMix64" algorithm is used to generate more seed bytes
+    /// from the 64 bit seed value in order to initialize the whole state.
     ///
     /// # Arguments
     ///
