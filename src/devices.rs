@@ -85,7 +85,8 @@ pub struct GetRandom;
 
 #[cfg(all(not(unix), feature = "std"))]
 impl GetRandom {
-    /// Creates a new GetRandom device
+    /// Creates a new `GetRandom` device
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }
