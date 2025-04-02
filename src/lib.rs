@@ -21,7 +21,7 @@ pub type SmallRng = Xoshiro256pp;
 
 /// This is the type alias for the default PRNG.
 /// It is currently not cryptographically secure, but if such an algorithm
-/// is added later, it will be used as the DefaultRng.
+/// is added later, it will be used as the `DefaultRng`.
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm staying the same then you should
 /// use a specific algorithm instead.

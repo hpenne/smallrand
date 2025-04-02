@@ -48,7 +48,12 @@ pub struct DevRandom {
 
 #[cfg(all(unix, feature = "std"))]
 impl DevRandom {
-    /// Creates a new DevRandom device
+    /// Creates a new `DevRandom` device.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the device is not found or cannot be read from.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             dev_random: File::open("/dev/random").expect("Failed to open /dev/random"),

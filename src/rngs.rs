@@ -70,7 +70,7 @@ pub trait Rng {
     where
         Self: Sized,
     {
-        self.iter::<u64>().flat_map(|r| r.to_ne_bytes())
+        self.iter::<u64>().flat_map(u64::to_ne_bytes)
     }
 }
 
@@ -85,18 +85,21 @@ impl ValueFromRng for bool {
 }
 
 impl ValueFromRng for u8 {
+    #[allow(clippy::cast_possible_truncation)]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as Self
     }
 }
 
 impl ValueFromRng for u16 {
+    #[allow(clippy::cast_possible_truncation)]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as Self
     }
 }
 
 impl ValueFromRng for u32 {
+    #[allow(clippy::cast_possible_truncation)]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32()
     }
@@ -110,7 +113,7 @@ impl ValueFromRng for u64 {
 
 impl ValueFromRng for u128 {
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
-        (rng.random_u64() as u128) << 64 | (rng.random_u64() as u128)
+        u128::from(rng.random_u64()) << 64 | u128::from(rng.random_u64())
     }
 }
 

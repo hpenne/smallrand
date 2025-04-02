@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::inline_always)]
 
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevRandom;
@@ -25,6 +26,7 @@ impl Xoshiro256pp {
     ///
     /// returns: Xoshiro256pp
     #[cfg(feature = "std")]
+    #[must_use]
     pub fn new() -> Self {
         #[cfg(unix)]
         let rng = Self::from_device(&mut DevRandom::new());
@@ -56,6 +58,7 @@ impl Xoshiro256pp {
     /// * `seed`: The seed to use
     ///
     /// returns: Xoshiro256pp
+    #[must_use]
     pub fn from_seed(seed: u64) -> Self {
         let mut seed_generator = SplitMix64::new(seed);
         Self {
@@ -160,7 +163,7 @@ impl Xoshiro256pp {
     }
 
     // This is "next" from the C reference implementation
-    pub fn next(&mut self) -> u64 {
+    pub fn next_random(&mut self) -> u64 {
         let result = (self.state[0].wrapping_add(self.state[3]))
             .rotate_left(23)
             .wrapping_add(self.state[0]);
@@ -188,12 +191,13 @@ impl Default for Xoshiro256pp {
 }
 
 impl Rng for Xoshiro256pp {
+    #[allow(clippy::cast_possible_truncation)]
     fn random_u32(&mut self) -> u32 {
         self.random_u64() as u32
     }
 
     fn random_u64(&mut self) -> u64 {
-        self.next()
+        self.next_random()
     }
 }
 
@@ -207,10 +211,10 @@ impl SplitMix64 {
     }
 
     fn next(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(0x9e3779b97f4a7c15);
+        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
         let mut z = self.state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
         z ^ (z >> 31)
     }
 }
