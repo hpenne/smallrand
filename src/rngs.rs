@@ -137,6 +137,22 @@ impl ValueFromRng for u128 {
     }
 }
 
+impl RangeFromRng for usize {
+    #[cfg(target_pointer_width = "16")]
+    fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
+        rng.random_u32() as usize
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
+        rng.random_u32() as usize
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
+        rng.random_u64() as usize
+    }}
+
 pub trait RangeFromRng {
     fn range_from_rng<T: Rng, R: RangeBounds<Self>>(device: &mut T, range: R) -> Self;
 }
