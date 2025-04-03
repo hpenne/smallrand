@@ -164,6 +164,23 @@ impl Xoshiro256pp {
         <Self as Rng>::iter_u8(self)
     }
 
+    #[inline(always)]
+    pub fn fill<T>(&mut self, destination: &mut [T])
+    where
+        T: ValueFromRng,
+        Self: Sized,
+    {
+        <Self as Rng>::fill(self, destination)
+    }
+
+    #[inline(always)]
+    pub fn fill_u8(&mut self, destination: &mut [u8])
+    where
+        Self: Sized,
+    {
+        <Self as Rng>::fill_u8(self, destination)
+    }
+
     // This is "next" from the C reference implementation
     pub fn next_random(&mut self) -> u64 {
         let result = (self.state[0].wrapping_add(self.state[3]))
@@ -223,13 +240,13 @@ impl SplitMix64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Xoshiro256pp;
 
     struct DummyDevice;
 
-    impl RandomDevice for DummyDevice {
+    impl crate::RandomDevice for DummyDevice {
         fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
-            [42; N]
+            core::array::from_fn(|i| (i + 42) as u8)
         }
     }
 
@@ -354,5 +371,30 @@ mod tests {
             ],
             rng.iter().take(6).collect::<Vec<u128>>()
         );
+    }
+
+    #[test]
+    fn xoshiro_generate_usize() {
+        let mut rng = xoshiro();
+        assert_eq!(
+            vec![],
+            rng.iter().take(6).collect::<Vec<usize>>()
+        );
+    }
+
+    #[test]
+    fn xoshiro_fill_u32() {
+        let mut rng = xoshiro();
+        let mut data = [0_u32; 4];
+        rng.fill(&mut data);
+        assert_eq!(&vec[], &data);
+    }
+
+    #[test]
+    fn xoshiro_fill_u8() {
+        let mut rng = xoshiro();
+        let mut data = [0_u8; 4];
+        rng.fill_u8(&mut data);
+        assert_eq!(&vec[], &data);
     }
 }
