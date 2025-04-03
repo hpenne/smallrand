@@ -72,6 +72,26 @@ pub trait Rng {
     {
         self.iter::<u64>().flat_map(u64::to_ne_bytes)
     }
+
+    fn fill<T>(&mut self, destination: &mut [T]) 
+    where 
+        T: ValueFromRng,
+        Self: Sized
+    {
+        for element in destination {
+            *element = self.random();
+        }
+    }
+
+    fn fill_u8(&mut self, destination: &mut [u8]) 
+    where 
+        T: ValueFromRng,
+        Self: Sized
+    {
+        for (element, value) in destination.iter_mut().zip(self.iter_u8()) {
+            *element = value;
+        }
+    }
 }
 
 pub trait ValueFromRng {
