@@ -33,6 +33,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           toolchain: ${{ matrix.toolchain }}
+      - name: Install clippy
+        run: rustup component add clippy
       - name: Run clippy with pedantic
         run: cargo clippy --all -- -W clippy::pedantic -D warnings
       - name: Build
