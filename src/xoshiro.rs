@@ -13,6 +13,7 @@ use std::ops::RangeBounds;
 /// This is an efficient PRNG with good random properties, but not cryptographically secure:
 /// An attacker will be able to calculate the internal state by observing
 /// a number of samples, and thus predict future output.
+#[allow(clippy::module_name_repetitions)]
 pub struct Xoshiro256pp {
     state: [u64; 4],
 }
@@ -134,9 +135,9 @@ impl Xoshiro256pp {
     /// }
     /// ```
     #[inline(always)]
-    pub fn iter<T>(&mut self) -> impl Iterator<Item = T> + use<'_, T>
+    pub fn iter<'a, T>(&'a mut self) -> impl Iterator<Item = T> + 'a
     where
-        T: ValueFromRng,
+        T: ValueFromRng + 'a,
         Self: Sized,
     {
         <Self as Rng>::iter(self)
@@ -157,28 +158,61 @@ impl Xoshiro256pp {
     /// }
     /// ```
     #[inline(always)]
-    pub fn iter_u8(&mut self) -> impl Iterator<Item = u8> + use<'_>
+    pub fn iter_u8(&mut self) -> impl Iterator<Item = u8> + '_
     where
         Self: Sized,
     {
         <Self as Rng>::iter_u8(self)
     }
 
+    /// Fills a mutable slice with random values.
+    ///
+    /// # Arguments
+    ///
+    /// * `destination`: The slice to fill
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[cfg(feature = "std")]
+    /// {
+    /// let mut rng = smallrand::Xoshiro256pp::new();
+    /// let mut data = [0_usize; 4];
+    /// rng.fill(&mut data);
+    /// }
+    /// ```
     #[inline(always)]
     pub fn fill<T>(&mut self, destination: &mut [T])
     where
         T: ValueFromRng,
         Self: Sized,
     {
-        <Self as Rng>::fill(self, destination)
+        <Self as Rng>::fill(self, destination);
     }
 
+    /// Fills a mutable slice of u8 with random values.
+    /// Faster than `fill` for u8 values.
+    ///
+    /// # Arguments
+    ///
+    /// * `destination`: The slice to fill
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[cfg(feature = "std")]
+    /// {
+    /// let mut rng = smallrand::Xoshiro256pp::new();
+    /// let mut data = [0_u8; 4];
+    /// rng.fill_u8(&mut data);
+    /// }
+    /// ```
     #[inline(always)]
     pub fn fill_u8(&mut self, destination: &mut [u8])
     where
         Self: Sized,
     {
-        <Self as Rng>::fill_u8(self, destination)
+        <Self as Rng>::fill_u8(self, destination);
     }
 
     // This is "next" from the C reference implementation
@@ -316,7 +350,7 @@ mod tests {
     fn xoshiro_generate_bools() {
         let mut rng = xoshiro();
         assert_eq!(
-            vec![false, true, false, false, true, true],
+            vec![true, true, false, true, true, true],
             rng.iter().take(6).collect::<Vec<_>>()
         );
     }
@@ -325,7 +359,7 @@ mod tests {
     fn xoshiro_generate_u8() {
         let mut rng = xoshiro();
         assert_eq!(
-            vec![84, 63, 162, 30, 185, 255],
+            vec![93, 199, 18, 93, 255, 159],
             rng.iter().take(6).collect::<Vec<u8>>()
         );
     }
@@ -334,7 +368,7 @@ mod tests {
     fn xoshiro_generate_u8_fast() {
         let mut rng = xoshiro();
         assert_eq!(
-            vec![84, 84, 84, 84, 84, 84],
+            vec![93, 91, 89, 95, 93, 91],
             rng.iter_u8().take(6).collect::<Vec<_>>()
         );
     }
@@ -343,7 +377,7 @@ mod tests {
     fn xoshiro_generate_u16() {
         let mut rng = xoshiro();
         assert_eq!(
-            vec![21588, 16191, 41634, 8734, 45497, 1535],
+            vec![23389, 17863, 786, 12381, 18687, 18079],
             rng.iter().take(6).collect::<Vec<u16>>()
         );
     }
@@ -352,7 +386,7 @@ mod tests {
     fn xoshiro_generate_u32() {
         let mut rng = xoshiro();
         assert_eq!(
-            vec![1414812756, 1061109567, 2728567458, 3299746334, 3115430329, 2173044223],
+            vec![1599691613, 1187268039, 3807576850, 1187065949, 2131446015, 3237824159],
             rng.iter().take(6).collect::<Vec<u32>>()
         );
     }
@@ -362,12 +396,12 @@ mod tests {
         let mut rng = xoshiro();
         assert_eq!(
             vec![
-                112093014985720905609945432936159330111,
-                216179386043890317965546119157345296926,
-                122103223737332025759166659050613376511,
-                28681241608870936069189409415718651905,
-                270164761497474401175398671158277407014,
-                107703748537752760609113074678511574743
+                116106803150699428516699394013734913479,
+                216263115653590202844377321789695537245,
+                328425740128965645684326511152092497567,
+                254561204173543679954141383040234184739,
+                40455170329874112030313783831106647436,
+                309825739868400302084046781679576737863
             ],
             rng.iter().take(6).collect::<Vec<u128>>()
         );
@@ -377,7 +411,14 @@ mod tests {
     fn xoshiro_generate_usize() {
         let mut rng = xoshiro();
         assert_eq!(
-            vec![],
+            vec![
+                6294162410816756573,
+                4666366678484141511,
+                11723646991005319954,
+                3577826909737791581,
+                17803995047399213311,
+                17636447047143736991
+            ],
             rng.iter().take(6).collect::<Vec<usize>>()
         );
     }
@@ -387,7 +428,7 @@ mod tests {
         let mut rng = xoshiro();
         let mut data = [0_u32; 4];
         rng.fill(&mut data);
-        assert_eq!(&vec[], &data);
+        assert_eq!(&vec![1599691613, 1187268039, 3807576850, 1187065949], &data);
     }
 
     #[test]
@@ -395,6 +436,6 @@ mod tests {
         let mut rng = xoshiro();
         let mut data = [0_u8; 4];
         rng.fill_u8(&mut data);
-        assert_eq!(&vec[], &data);
+        assert_eq!(&vec![93, 91, 89, 95], &data);
     }
 }

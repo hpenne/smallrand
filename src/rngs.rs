@@ -73,20 +73,32 @@ pub trait Rng {
         self.iter::<u64>().flat_map(u64::to_ne_bytes)
     }
 
-    fn fill<T>(&mut self, destination: &mut [T]) 
-    where 
+    /// Fills a mutable slice with random values.
+    ///
+    /// # Arguments
+    ///
+    /// * `destination`: The slice to fill
+    ///
+    fn fill<T>(&mut self, destination: &mut [T])
+    where
         T: ValueFromRng,
-        Self: Sized
+        Self: Sized,
     {
         for element in destination {
             *element = self.random();
         }
     }
 
-    fn fill_u8(&mut self, destination: &mut [u8]) 
-    where 
-        T: ValueFromRng,
-        Self: Sized
+    /// Fills a mutable slice of u8 with random values.
+    /// Faster than `fill` for u8 values.
+    ///
+    /// # Arguments
+    ///
+    /// * `destination`: The slice to fill
+    ///
+    fn fill_u8(&mut self, destination: &mut [u8])
+    where
+        Self: Sized,
     {
         for (element, value) in destination.iter_mut().zip(self.iter_u8()) {
             *element = value;
@@ -139,16 +151,19 @@ impl ValueFromRng for u128 {
 
 impl ValueFromRng for usize {
     #[cfg(target_pointer_width = "16")]
+    #[allow(clippy::cast_possible_truncation)]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as usize
     }
 
     #[cfg(target_pointer_width = "32")]
+    #[allow(clippy::cast_possible_truncation)]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as usize
     }
 
     #[cfg(target_pointer_width = "64")]
+    #[allow(clippy::cast_possible_truncation)]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u64() as usize
     }
