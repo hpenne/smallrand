@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::inline_always)]
 
 use core::ops::Bound;
 use core::ops::RangeBounds;
@@ -23,6 +24,7 @@ pub trait Rng {
     ///
     /// returns: A random integer
     ///
+    #[inline(always)]
     fn random<T>(&mut self) -> T
     where
         T: ValueFromRng,
@@ -53,6 +55,7 @@ pub trait Rng {
     ///
     /// returns: An iterator that outputs random values. Never None.
     ///
+    #[inline(always)]
     fn iter<T>(&mut self) -> impl Iterator<Item = T>
     where
         T: ValueFromRng,
@@ -66,6 +69,7 @@ pub trait Rng {
     ///
     /// returns: An iterator that outputs random u8 values. Never None.
     ///
+    #[inline(always)]
     fn iter_u8(&mut self) -> impl Iterator<Item = u8>
     where
         Self: Sized,
@@ -79,6 +83,7 @@ pub trait Rng {
     ///
     /// * `destination`: The slice to fill
     ///
+    #[inline(always)]
     fn fill<T>(&mut self, destination: &mut [T])
     where
         T: ValueFromRng,
@@ -96,6 +101,7 @@ pub trait Rng {
     ///
     /// * `destination`: The slice to fill
     ///
+    #[inline(always)]
     fn fill_u8(&mut self, destination: &mut [u8])
     where
         Self: Sized,

@@ -216,6 +216,7 @@ impl Xoshiro256pp {
     }
 
     // This is "next" from the C reference implementation
+    #[inline(always)]
     pub fn next_random(&mut self) -> u64 {
         let result = (self.state[0].wrapping_add(self.state[3]))
             .rotate_left(23)
@@ -245,10 +246,12 @@ impl Default for Xoshiro256pp {
 
 impl Rng for Xoshiro256pp {
     #[allow(clippy::cast_possible_truncation)]
+    #[inline(always)]
     fn random_u32(&mut self) -> u32 {
         self.random_u64() as u32
     }
 
+    #[inline(always)]
     fn random_u64(&mut self) -> u64 {
         self.next_random()
     }
