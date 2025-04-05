@@ -106,8 +106,14 @@ pub trait Rng {
     where
         Self: Sized,
     {
-        for (element, value) in destination.iter_mut().zip(self.iter_u8()) {
-            *element = value;
+        let mut blocks = destination.chunks_exact_mut(size_of::<u64>());
+        for block in blocks.by_ref() {
+            block.copy_from_slice(&self.random_u64().to_ne_bytes());
+        }
+        let bytes_remaining = blocks.into_remainder();
+        if !bytes_remaining.is_empty() {
+            bytes_remaining
+                .copy_from_slice(&self.random::<u64>().to_ne_bytes()[..bytes_remaining.len()]);
         }
     }
 }
