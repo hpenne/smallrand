@@ -49,9 +49,6 @@ FAQ
     - This crate compiles much faster than `rand`.
 * Why would I choose this over `fastrand`?
     - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++.
-    - When you use `fastrand` to generate integers in a range, it does not generate a uniform distribution (as of March
-      30th 2025). The code uses a simple modulus, which is plain wrong. This calls the quality of the whole crate into
-      question.
 
 ## The Juniper incident
 
