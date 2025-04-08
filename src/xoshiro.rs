@@ -215,6 +215,31 @@ impl Xoshiro256pp {
         <Self as Rng>::fill_u8(self, destination);
     }
 
+    /// Shuffles the elements of a slice
+    ///
+    /// # Arguments
+    ///
+    /// * `target`: The slice to shuffle
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #[cfg(feature = "std")]
+    /// {
+    /// let mut rng = smallrand::Xoshiro256pp::new();
+    /// let mut numbers = vec![1, 2, 3, 4, 5];
+    /// rng.shuffle(&mut numbers);
+    /// }
+    /// ```
+    #[inline(always)]
+    pub fn shuffle<T>(&mut self, target: &mut [T])
+    where
+        T: Clone,
+        Self: Sized,
+    {
+        <Self as Rng>::shuffle(self, target);
+    }
+
     // This is "next" from the C reference implementation
     #[inline(always)]
     pub fn next_random(&mut self) -> u64 {
