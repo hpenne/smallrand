@@ -116,6 +116,23 @@ pub trait Rng {
                 .copy_from_slice(&self.random::<u64>().to_ne_bytes()[..bytes_remaining.len()]);
         }
     }
+
+    /// Shuffles the elements of a slice
+    ///
+    /// # Arguments
+    ///
+    /// * `target`: The slice to shuffle
+    ///
+    #[inline(always)]
+    fn shuffle<T>(&mut self, target: &mut [T])
+    where
+        T: Clone,
+        Self: Sized,
+    {
+        for inx in 0..target.len() {
+            target.swap(inx, self.range(inx + 1..target.len()));
+        }
+    }
 }
 
 pub trait ValueFromRng {
