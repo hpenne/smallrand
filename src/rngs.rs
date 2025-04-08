@@ -129,8 +129,8 @@ pub trait Rng {
         T: Clone,
         Self: Sized,
     {
-        for inx in 0..target.len() {
-            target.swap(inx, self.range(inx + 1..target.len()));
+        for inx in 0..target.len() - 1 {
+            target.swap(inx, self.range(inx..target.len()));
         }
     }
 }
