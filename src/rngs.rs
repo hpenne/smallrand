@@ -116,6 +116,23 @@ pub trait Rng {
                 .copy_from_slice(&self.random::<u64>().to_ne_bytes()[..bytes_remaining.len()]);
         }
     }
+
+    /// Shuffles the elements of a slice
+    ///
+    /// # Arguments
+    ///
+    /// * `target`: The slice to shuffle
+    ///
+    #[inline(always)]
+    fn shuffle<T>(&mut self, target: &mut [T])
+    where
+        T: Clone,
+        Self: Sized,
+    {
+        for inx in 0..target.len() - 1 {
+            target.swap(inx, self.range(inx..target.len()));
+        }
+    }
 }
 
 pub trait ValueFromRng {
@@ -201,6 +218,9 @@ macro_rules! range_from_rng {
                 Bound::Excluded(end) => end - start,
                 Bound::Unbounded => <$output_type>::MAX - start + 1,
             };
+            if span == 0 {
+                return start;
+            }
             let mut random_value: $output_type = device.random();
             let reduced_max = <$output_type>::MAX - span + 1;
             let max_valid_value = <$output_type>::MAX - (reduced_max % span);
@@ -263,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn test_range_u8() {
+    fn test_range_u8_is_uniform() {
         let mut rng = CountingRng::new();
         const START: u8 = 13;
         const END: u8 = 42;
@@ -292,5 +312,13 @@ mod tests {
         for i in 0..256 {
             assert_eq!(count[0], count[i], "failed for {i}");
         }
+    }
+
+    #[test]
+    fn test_shuffle() {
+        let mut rng = CountingRng::new();
+        let mut numbers = vec![1, 2, 3, 4, 5];
+        rng.shuffle(&mut numbers);
+        assert_eq!(numbers, vec![1, 3, 5, 2, 4]);
     }
 }
