@@ -40,7 +40,7 @@ impl FromRaw for u128 {
     }
 }
 
-/// This is a random device that generates seeds by reading from /dev/random
+/// This is a random device that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
 pub struct DevRandom {
     dev_random: File,
@@ -56,7 +56,7 @@ impl DevRandom {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            dev_random: File::open("/dev/random").expect("Failed to open /dev/random"),
+            dev_random: File::open("/dev/urandom").expect("Failed to open /dev/urandom"),
         }
     }
 }
@@ -74,7 +74,7 @@ impl RandomDevice for DevRandom {
         let mut result = [0; N];
         self.dev_random
             .read_exact(&mut result)
-            .expect("Failed to read from /dev/random");
+            .expect("Failed to read from /dev/urandom");
         result
     }
 }
