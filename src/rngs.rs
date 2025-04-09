@@ -324,6 +324,14 @@ mod tests {
     }
 
     #[test]
+    fn test_range_boundaries() {
+        let mut rng = CountingRng::new();
+        let _: u8 = rng.range(0..=255);
+        let _: u8 = rng.range(..=255);
+        assert_eq!(255u8, rng.range(255u8..=255));
+    }
+
+    #[test]
     fn test_shuffle() {
         let mut rng = CountingRng::new();
         let mut numbers = vec![1, 2, 3, 4, 5];
