@@ -132,7 +132,7 @@ pub trait Rng {
         // This is the forward version of the Fisher-Yates/Knuth shuffle:
         // https://en.wikipedia.org/wiki/Fisher–Yates_shuffle
         if !target.is_empty() {
-            for inx in 0..target.len().wrapping_sub(1) {
+            for inx in 0..target.len() - 1 {
                 // Note: "inx" is part of the range, to allow the current element to be swapped
                 // with itself. Otherwise, it will always be moved, which would be incorrect.
                 target.swap(inx, self.range(inx..target.len()));
