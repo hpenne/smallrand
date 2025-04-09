@@ -129,8 +129,14 @@ pub trait Rng {
         T: Clone,
         Self: Sized,
     {
-        for inx in 0..target.len() - 1 {
-            target.swap(inx, self.range(inx..target.len()));
+        // This is the forward version of the Fisher-Yates/Knuth shuffle:
+        // https://en.wikipedia.org/wiki/Fisher–Yates_shuffle
+        if !target.is_empty() {
+            for inx in 0..target.len().wrapping_sub(1) {
+                // Note: "inx" is part of the range, to allow the current element to be swapped
+                // with itself. Otherwise, it will always be moved, which would be incorrect.
+                target.swap(inx, self.range(inx..target.len()));
+            }
         }
     }
 }
@@ -207,15 +213,18 @@ macro_rules! range_from_rng {
         fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(device: &mut T, range: R) -> Self {
             let start: $output_type = match range.start_bound() {
                 Bound::Included(start) => *start,
-                Bound::Excluded(start) => start + 1,
+                Bound::Excluded(start) => start.checked_add(1).expect("Range start overflow"),
                 Bound::Unbounded => 0,
             };
             let span: $output_type = match range.end_bound() {
                 Bound::Unbounded | Bound::Included(&<$output_type>::MAX) if start == 0 => {
                     return device.random();
                 }
-                Bound::Included(end) => end - start + 1,
-                Bound::Excluded(end) => end - start,
+                Bound::Included(&<$output_type>::MAX) => <$output_type>::MAX - start + 1,
+                Bound::Included(end) => (end + 1)
+                    .checked_sub(start)
+                    .expect("Range end before start"),
+                Bound::Excluded(end) => end.checked_sub(start).expect("Range end before start"),
                 Bound::Unbounded => <$output_type>::MAX - start + 1,
             };
             if span == 0 {
@@ -315,10 +324,26 @@ mod tests {
     }
 
     #[test]
+    fn test_range_boundaries() {
+        let mut rng = CountingRng::new();
+        let _: u8 = rng.range(0..=255);
+        let _: u8 = rng.range(..=255);
+        assert_eq!(255u8, rng.range(255u8..=255));
+    }
+
+    #[test]
     fn test_shuffle() {
         let mut rng = CountingRng::new();
         let mut numbers = vec![1, 2, 3, 4, 5];
         rng.shuffle(&mut numbers);
         assert_eq!(numbers, vec![1, 3, 5, 2, 4]);
+    }
+
+    #[test]
+    fn test_shuffle_empty_slice() {
+        let mut rng = CountingRng::new();
+        let mut numbers: Vec<u8> = vec![];
+        rng.shuffle(&mut numbers);
+        assert_eq!(numbers, vec![]);
     }
 }
