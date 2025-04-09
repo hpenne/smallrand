@@ -214,29 +214,29 @@ macro_rules! range_from_rng {
             let start: $output_type = match range.start_bound() {
                 Bound::Included(start) => *start,
                 Bound::Excluded(start) => start.checked_add(1).expect("Range start overflow"),
-                Bound::Unbounded => 0,
+                Bound::Unbounded => <$output_type>::MIN,
             };
-            let span: $output_type = match range.end_bound() {
-                Bound::Unbounded | Bound::Included(&<$output_type>::MAX) if start == 0 => {
-                    return device.random();
-                }
-                Bound::Included(&<$output_type>::MAX) => <$output_type>::MAX - start + 1,
-                Bound::Included(end) => (end + 1)
-                    .checked_sub(start)
-                    .expect("Range end before start"),
-                Bound::Excluded(end) => end.checked_sub(start).expect("Range end before start"),
-                Bound::Unbounded => <$output_type>::MAX - start + 1,
+            let high_inclusive: $output_type = match range.end_bound() {
+                Bound::Included(start) => *start,
+                Bound::Excluded(start) => start.checked_sub(1).expect("Range end underflow"),
+                Bound::Unbounded => <$output_type>::MAX,
             };
+            if start == <$output_type>::MIN && high_inclusive == <$output_type>::MAX {
+                return device.random();
+            }
+            assert!(start <= high_inclusive, "Inverted range");
+            let span = high_inclusive - start + 1;
             if span == 0 {
                 return start;
             }
-            let mut random_value: $output_type = device.random();
             let reduced_max = <$output_type>::MAX - span + 1;
             let max_valid_value = <$output_type>::MAX - (reduced_max % span);
-            while random_value > max_valid_value {
-                random_value = device.random();
+            loop {
+                let random_value: $output_type = device.random();
+                if random_value <= max_valid_value {
+                    return start + (random_value % span);
+                }
             }
-            start + (random_value % span)
         }
     };
 }
@@ -329,6 +329,7 @@ mod tests {
         let _: u8 = rng.range(0..=255);
         let _: u8 = rng.range(..=255);
         assert_eq!(255u8, rng.range(255u8..=255));
+        assert_eq!(0u8, rng.range(0u8..=0));
     }
 
     #[test]

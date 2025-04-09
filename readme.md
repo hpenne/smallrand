@@ -38,7 +38,8 @@ FAQ
       want implement the CSPRNG yourself.
 * How fast is this compared to `rand`?
     - `smallrand` has been benchmarked against the same algorithm from the `rand` crate (`SmallRng`/Xoshiro256++) using
-      `criterion`. `smallrand` is equal in performance when generating u64 values and uniformly distributed sub ranges
+      `criterion`. On my Apple M1, `smallrand` is equal in performance when generating u64 values, more than twice as
+      fast generating uniformly distributed ranges
       of u64 values, and approximately 10% faster when filling a slice of bytes with random data.
 * Why would I choose this over `rand`?
     - `rand` is very large and difficult to audit. Its dependencies (as of 0.9) include `zerocopy`, which contains a
