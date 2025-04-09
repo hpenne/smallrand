@@ -75,6 +75,10 @@ impl RandomDevice for DevRandom {
         self.dev_random
             .read_exact(&mut result)
             .expect("Failed to read from /dev/urandom");
+        assert!(
+            !result.iter().all(|v| *v == 0),
+            "Entropy source generates all zeros"
+        );
         result
     }
 }
