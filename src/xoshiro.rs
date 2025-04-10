@@ -2,7 +2,7 @@
 #![allow(clippy::inline_always)]
 
 #[cfg(all(unix, feature = "std"))]
-pub use crate::devices::DevRandom;
+pub use crate::devices::DevUrandom;
 use crate::rngs::{RangeFromRng, ValueFromRng};
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
@@ -30,7 +30,7 @@ impl Xoshiro256pp {
     #[must_use]
     pub fn new() -> Self {
         #[cfg(unix)]
-        let rng = Self::from_device(&mut DevRandom::new());
+        let rng = Self::from_device(&mut DevUrandom::new());
         #[cfg(not(unix))]
         let rng = Self::from_device(&mut GetRandom::new());
         rng

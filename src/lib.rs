@@ -5,7 +5,7 @@ mod rngs;
 mod xoshiro;
 
 #[cfg(all(unix, feature = "std"))]
-pub use devices::DevRandom;
+pub use devices::DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
 pub use devices::GetRandom;
 pub use devices::RandomDevice;
