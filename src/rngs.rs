@@ -208,8 +208,35 @@ pub trait RangeFromRng {
     fn range_from_rng<T: Rng, R: RangeBounds<Self>>(device: &mut T, range: R) -> Self;
 }
 
-macro_rules! range_from_rng {
+trait ZeroBasedRange {
+    fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self;
+}
+
+macro_rules! zero_based_range_from_rng {
     ($output_type: ty) => {
+        impl ZeroBasedRange for $output_type {
+            #[inline(always)]
+            fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
+                let mut random_value: Self = rng.random();
+                let reduced_max = Self::MAX - span + 1;
+                let max_valid_value = Self::MAX - (reduced_max % span);
+                while random_value > max_valid_value {
+                    random_value = rng.random();
+                }
+                random_value % span
+            }
+        }
+    };
+}
+
+zero_based_range_from_rng!(u32);
+zero_based_range_from_rng!(u64);
+zero_based_range_from_rng!(u128);
+zero_based_range_from_rng!(usize);
+
+macro_rules! range_from_rng {
+    ($output_type: ty, $unsigned_type: ty, $generate_type: ty) => {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(device: &mut T, range: R) -> Self {
             let start: $output_type = match range.start_bound() {
                 Bound::Included(start) => *start,
@@ -222,47 +249,67 @@ macro_rules! range_from_rng {
                 Bound::Unbounded => <$output_type>::MAX,
             };
             if start == <$output_type>::MIN && high_inclusive == <$output_type>::MAX {
-                return device.random();
+                return device.random::<$generate_type>() as $output_type;
             }
             assert!(start <= high_inclusive, "Inverted range");
-            let span = high_inclusive - start + 1;
+            let span = (high_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
             if span == 0 {
                 return start;
             }
-            let reduced_max = <$output_type>::MAX - span + 1;
-            let max_valid_value = <$output_type>::MAX - (reduced_max % span);
-            loop {
-                let random_value: $output_type = device.random();
-                if random_value <= max_valid_value {
-                    return start + (random_value % span);
-                }
-            }
+            start.wrapping_add(
+                (<$generate_type>::zero_based_range_from_rng(device, <$generate_type>::from(span))
+                    as $output_type),
+            )
         }
     };
 }
 
 impl RangeFromRng for u8 {
-    range_from_rng! {u8}
+    range_from_rng! {u8, u8, u32}
+}
+
+impl RangeFromRng for i8 {
+    range_from_rng! {i8, u8, u32}
 }
 
 impl RangeFromRng for u16 {
-    range_from_rng! {u16}
+    range_from_rng! {u16, u16, u32}
+}
+
+impl RangeFromRng for i16 {
+    range_from_rng! {i16, u16, u32}
 }
 
 impl RangeFromRng for u32 {
-    range_from_rng! {u32}
+    range_from_rng! {u32, u32, u32}
+}
+
+impl RangeFromRng for i32 {
+    range_from_rng! {i32, u32, u32}
 }
 
 impl RangeFromRng for u64 {
-    range_from_rng! {u64}
+    range_from_rng! {u64, u64, u64}
+}
+
+impl RangeFromRng for i64 {
+    range_from_rng! {i64, u64, u64}
 }
 
 impl RangeFromRng for u128 {
-    range_from_rng! {u128}
+    range_from_rng! {u128, u128, u128}
+}
+
+impl RangeFromRng for i128 {
+    range_from_rng! {i128, u128, u128}
 }
 
 impl RangeFromRng for usize {
-    range_from_rng! {usize}
+    range_from_rng! {usize, usize, usize}
+}
+
+impl RangeFromRng for isize {
+    range_from_rng! {isize, usize, usize}
 }
 
 #[cfg(test)]
@@ -303,6 +350,25 @@ mod tests {
             assert!(value >= START);
             assert!(value < END);
             let inx = (value - START) as usize;
+            count[inx] += 1;
+        }
+        for i in 0..LEN {
+            assert_eq!(count[0], count[i]);
+        }
+    }
+
+    #[test]
+    fn test_range_i8_is_uniform() {
+        let mut rng = CountingRng::new();
+        const START: i8 = -127;
+        const END: i8 = 126;
+        const LEN: usize = ((END as isize) - (START as isize)) as usize;
+        let mut count: [u8; LEN] = [0; LEN];
+        for _ in 0..100 * LEN {
+            let value = rng.range(START..END);
+            assert!(value >= START);
+            assert!(value < END);
+            let inx = (value as isize).wrapping_sub(START as isize) as usize;
             count[inx] += 1;
         }
         for i in 0..LEN {
