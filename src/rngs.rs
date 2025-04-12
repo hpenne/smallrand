@@ -236,7 +236,11 @@ zero_based_range_from_rng!(usize);
 
 macro_rules! range_from_rng {
     ($output_type: ty, $unsigned_type: ty, $generate_type: ty) => {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_possible_wrap
+        )]
         fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(device: &mut T, range: R) -> Self {
             let start: $output_type = match range.start_bound() {
                 Bound::Included(start) => *start,
