@@ -467,4 +467,20 @@ mod tests {
         rng.fill_u8(&mut data);
         assert_eq!(&vec![93, 91, 89, 95], &data);
     }
+
+    #[test]
+    fn xoshiro_bounded_range_f64() {
+        let mut rng = xoshiro();
+        let mut min = 42_f64;
+        let mut max = 4_f64;
+        for _ in 0..100 * 256 {
+            let value: f64 = rng.range(4.0..42.0);
+            assert!(value >= 4.0);
+            assert!(value <= 42.0);
+            min = min.min(value);
+            max = max.max(value);
+        }
+        assert!(min < 4.01);
+        assert!(max >= 41.99);
+    }
 }

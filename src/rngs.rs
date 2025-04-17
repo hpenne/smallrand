@@ -327,7 +327,26 @@ impl RangeFromRng for f64 {
             Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
         };
         let span = end - start;
-        let normalized = (rng.random::<u128>() as f64) / 2_f64.powi(128);
+
+        // An ideal algorithm should draw a real number, then round that to the nearest float
+        // representation, in order to allow all possible float values to be possible outcomes.
+        // This would be equivalent to drawing an int with virtually infinite size before
+        // converting to float.
+        // In practice, we just need enough bits to ensure that the mantissa is fully used.
+        // A u64 will suffice, unless it has enough leading zero bits that there are less
+        // than 53 remaining bits (because the mantissa has 52 bits plus an initial implicit 1).
+        // We thus check the number of leading 0 bits, and draw one more random u64
+        // to make the integer value u128 if necessary.
+        // It is theoretically possible that a u128 this still not enough, but the probability
+        // of that many leading zero bits is more than small enough to ignore.
+        // Allways using u128 would be simpler, but not as fast.
+        let r = rng.random::<u64>();
+        let normalized = if (r >> 52) != 0 {
+            (r as f64) / 2_f64.powi(64)
+        } else {
+            let r = ((r as u128) << 64) | (rng.random::<u64>() as u128);
+            (r as f64) / 2_f64.powi(128)
+        };
         normalized * span + start
     }
 }
@@ -406,16 +425,6 @@ mod tests {
         }
         for i in 0..256 {
             assert_eq!(count[0], count[i], "failed for {i}");
-        }
-    }
-
-    #[test]
-    fn test_bounded_range_f64() {
-        let mut rng = CountingRng::new();
-        for _ in 0..100 * 256 {
-            let value: f64 = rng.range(4.0..42.0);
-            assert!(value >= 4.0);
-            assert!(value <= 42.0);
         }
     }
 
