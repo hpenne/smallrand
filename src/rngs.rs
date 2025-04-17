@@ -317,6 +317,7 @@ impl RangeFromRng for isize {
 }
 
 impl RangeFromRng for f32 {
+    #[allow(clippy::cast_precision_loss)]
     fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
         let start = match range.start_bound() {
             Bound::Included(start) | Bound::Excluded(start) => *start,
@@ -344,7 +345,7 @@ impl RangeFromRng for f32 {
         let normalized = if (r >> 23) != 0 {
             (r as f32) / 2_f32.powi(64)
         } else {
-            let r = ((r as u128) << 64) | (rng.random::<u64>() as u128);
+            let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
             (r as f32) / 2_f32.powi(128)
         };
         normalized * span + start
@@ -352,6 +353,7 @@ impl RangeFromRng for f32 {
 }
 
 impl RangeFromRng for f64 {
+    #[allow(clippy::cast_precision_loss)]
     fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
         let start = match range.start_bound() {
             Bound::Included(start) | Bound::Excluded(start) => *start,
@@ -379,7 +381,7 @@ impl RangeFromRng for f64 {
         let normalized = if (r >> 52) != 0 {
             (r as f64) / 2_f64.powi(64)
         } else {
-            let r = ((r as u128) << 64) | (rng.random::<u64>() as u128);
+            let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
             (r as f64) / 2_f64.powi(128)
         };
         normalized * span + start
