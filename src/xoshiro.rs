@@ -483,4 +483,20 @@ mod tests {
         assert!(min < 4.01);
         assert!(max >= 41.99);
     }
+
+    #[test]
+    fn xoshiro_bounded_range_f32() {
+        let mut rng = xoshiro();
+        let mut min = 42_f32;
+        let mut max = 4_f32;
+        for _ in 0..100 * 256 {
+            let value: f32 = rng.range(4.0..42.0);
+            assert!(value >= 4.0);
+            assert!(value <= 42.0);
+            min = min.min(value);
+            max = max.max(value);
+        }
+        assert!(min < 4.01);
+        assert!(max >= 41.99);
+    }
 }

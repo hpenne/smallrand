@@ -316,6 +316,41 @@ impl RangeFromRng for isize {
     range_from_rng! {isize, usize, usize}
 }
 
+impl RangeFromRng for f32 {
+    fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
+        let start = match range.start_bound() {
+            Bound::Included(start) | Bound::Excluded(start) => *start,
+            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
+        };
+        let end = match range.end_bound() {
+            Bound::Included(end) | Bound::Excluded(end) => *end,
+            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
+        };
+        let span = end - start;
+
+        // An ideal algorithm should draw a real number, then round that to the nearest float
+        // representation, in order to allow all possible float values to be possible outcomes.
+        // This would be equivalent to drawing an int with virtually infinite size before
+        // converting to float.
+        // In practice, we just need enough bits to ensure that the mantissa is fully used.
+        // A u64 will suffice, unless it has enough leading zero bits that there are less
+        // than 24 remaining bits (because the mantissa has 23 bits plus an initial implicit 1).
+        // We thus check the number of leading 0 bits, and draw one more random u64
+        // to make the integer value u128 if necessary.
+        // It is theoretically possible that a u128 this still not enough, but the probability
+        // of that many leading zero bits is more than small enough to ignore.
+        // Allways using u128 would be simpler, but not as fast.
+        let r = rng.random::<u64>();
+        let normalized = if (r >> 23) != 0 {
+            (r as f32) / 2_f32.powi(64)
+        } else {
+            let r = ((r as u128) << 64) | (rng.random::<u64>() as u128);
+            (r as f32) / 2_f32.powi(128)
+        };
+        normalized * span + start
+    }
+}
+
 impl RangeFromRng for f64 {
     fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
         let start = match range.start_bound() {
