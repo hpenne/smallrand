@@ -241,19 +241,19 @@ macro_rules! range_from_rng {
             clippy::cast_sign_loss,
             clippy::cast_possible_wrap
         )]
-        fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(device: &mut T, range: R) -> Self {
+        fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(rng: &mut T, range: R) -> Self {
             let start: $output_type = match range.start_bound() {
                 Bound::Included(start) => *start,
                 Bound::Excluded(start) => start.checked_add(1).expect("Range start overflow"),
                 Bound::Unbounded => <$output_type>::MIN,
             };
             let high_inclusive: $output_type = match range.end_bound() {
-                Bound::Included(start) => *start,
-                Bound::Excluded(start) => start.checked_sub(1).expect("Range end underflow"),
+                Bound::Included(end) => *end,
+                Bound::Excluded(end) => end.checked_sub(1).expect("Range end underflow"),
                 Bound::Unbounded => <$output_type>::MAX,
             };
             if start == <$output_type>::MIN && high_inclusive == <$output_type>::MAX {
-                return device.random::<$generate_type>() as $output_type;
+                return rng.random::<$generate_type>() as $output_type;
             }
             assert!(start <= high_inclusive, "Inverted range");
             let span = (high_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
@@ -261,7 +261,7 @@ macro_rules! range_from_rng {
                 return start;
             }
             start.wrapping_add(
-                (<$generate_type>::zero_based_range_from_rng(device, <$generate_type>::from(span))
+                (<$generate_type>::zero_based_range_from_rng(rng, <$generate_type>::from(span))
                     as $output_type),
             )
         }
@@ -314,6 +314,22 @@ impl RangeFromRng for usize {
 
 impl RangeFromRng for isize {
     range_from_rng! {isize, usize, usize}
+}
+
+impl RangeFromRng for f64 {
+    fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
+        let start = match range.start_bound() {
+            Bound::Included(start) | Bound::Excluded(start) => *start,
+            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
+        };
+        let end = match range.end_bound() {
+            Bound::Included(end) | Bound::Excluded(end) => *end,
+            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
+        };
+        let span = end - start;
+        let normalized = (rng.random::<u128>() as f64) / 2_f64.powi(128);
+        normalized * span + start
+    }
 }
 
 #[cfg(test)]
@@ -390,6 +406,16 @@ mod tests {
         }
         for i in 0..256 {
             assert_eq!(count[0], count[i], "failed for {i}");
+        }
+    }
+
+    #[test]
+    fn test_bounded_range_f64() {
+        let mut rng = CountingRng::new();
+        for _ in 0..100 * 256 {
+            let value: f64 = rng.range(4.0..42.0);
+            assert!(value >= 4.0);
+            assert!(value <= 42.0);
         }
     }
 
