@@ -42,13 +42,13 @@ impl FromRaw for u128 {
 
 /// This is a random device that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
-pub struct DevRandom {
+pub struct DevUrandom {
     dev_random: File,
 }
 
 #[cfg(all(unix, feature = "std"))]
-impl DevRandom {
-    /// Creates a new `DevRandom` device.
+impl DevUrandom {
+    /// Creates a new `DevUrandom` device.
     ///
     /// # Panics
     ///
@@ -62,22 +62,22 @@ impl DevRandom {
 }
 
 #[cfg(all(unix, feature = "std"))]
-impl Default for DevRandom {
+impl Default for DevUrandom {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[cfg(all(unix, feature = "std"))]
-impl RandomDevice for DevRandom {
+impl RandomDevice for DevUrandom {
     fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
         let mut result = [0; N];
         self.dev_random
             .read_exact(&mut result)
             .expect("Failed to read from /dev/urandom");
         assert!(
-            !result.iter().all(|v| *v == 0),
-            "Entropy source generates all zeros"
+            result.iter().any(|v| *v != 0),
+            "Entropy source generated all zeros!"
         );
         result
     }
@@ -108,6 +108,10 @@ impl RandomDevice for GetRandom {
     fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
         let mut result = [0; N];
         getrandom::fill(&mut result).expect("getrandom::fill failed");
+        assert!(
+            result.iter().any(|v| *v != 0),
+            "getrandom generated all zeros!"
+        );
         result
     }
 }
@@ -119,16 +123,16 @@ mod tests {
     #[cfg(all(unix, feature = "std"))]
     #[test]
     fn generate_64_bit_seed_with_dev_random() {
-        let seed1: u64 = DevRandom::new().seed();
-        let seed2: u64 = DevRandom::new().seed();
+        let seed1: u64 = DevUrandom::new().seed();
+        let seed2: u64 = DevUrandom::new().seed();
         assert_ne!(seed1, seed2);
     }
 
     #[cfg(all(unix, feature = "std"))]
     #[test]
     fn generate_128_bit_seed_dev_random() {
-        let seed1: u64 = DevRandom::new().seed();
-        let seed2: u64 = DevRandom::new().seed();
+        let seed1: u64 = DevUrandom::new().seed();
+        let seed2: u64 = DevUrandom::new().seed();
         assert_ne!(seed1, seed2);
     }
 
