@@ -3,6 +3,7 @@
 
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevUrandom;
+use crate::ranges::GenerateRange;
 use crate::rngs::{RangeFromRng, ValueFromRng};
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
@@ -112,10 +113,9 @@ impl Xoshiro256pp {
     /// }
     /// ```
     #[inline(always)]
-    pub fn range<T, R>(&mut self, range: R) -> T
+    pub fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
     where
         T: RangeFromRng,
-        R: RangeBounds<T>,
         Self: Sized,
     {
         <Self as Rng>::range(self, range)

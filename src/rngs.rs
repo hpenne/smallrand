@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::inline_always)]
 
-use core::ops::Bound;
+use crate::ranges::GenerateRange;
 use core::ops::RangeBounds;
 
 /// This trait that all PRNGs must implement.
@@ -42,10 +42,9 @@ pub trait Rng {
     ///
     /// returns: A random integer
     ///
-    fn range<T, R>(&mut self, range: R) -> T
+    fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
     where
         T: RangeFromRng,
-        R: RangeBounds<T>,
         Self: Sized,
     {
         T::range_from_rng(self, range)
@@ -132,7 +131,7 @@ pub trait Rng {
         // This is the forward version of the Fisher-Yates/Knuth shuffle:
         // https://en.wikipedia.org/wiki/Fisher–Yates_shuffle
         if !target.is_empty() {
-            for inx in 0..target.len() - 1 {
+            for inx in 0_usize..target.len() - 1 {
                 // Note: "inx" is part of the range, to allow the current element to be swapped
                 // with itself. Otherwise, it will always be moved, which would be incorrect.
                 target.swap(inx, self.range(inx..target.len()));
@@ -205,7 +204,9 @@ impl ValueFromRng for usize {
 }
 
 pub trait RangeFromRng {
-    fn range_from_rng<T: Rng, R: RangeBounds<Self>>(device: &mut T, range: R) -> Self;
+    fn range_from_rng<T: Rng>(device: &mut T, range: impl Into<GenerateRange<Self>>) -> Self
+    where
+        Self: Sized;
 }
 
 trait ZeroBasedRange {
@@ -241,22 +242,19 @@ macro_rules! range_from_rng {
             clippy::cast_sign_loss,
             clippy::cast_possible_wrap
         )]
-        fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(rng: &mut T, range: R) -> Self {
-            let start: $output_type = match range.start_bound() {
-                Bound::Included(start) => *start,
-                Bound::Excluded(start) => start.checked_add(1).expect("Range start overflow"),
-                Bound::Unbounded => <$output_type>::MIN,
-            };
-            let high_inclusive: $output_type = match range.end_bound() {
-                Bound::Included(end) => *end,
-                Bound::Excluded(end) => end.checked_sub(1).expect("Range end underflow"),
-                Bound::Unbounded => <$output_type>::MAX,
-            };
-            if start == <$output_type>::MIN && high_inclusive == <$output_type>::MAX {
+        fn range_from_rng<T: Rng>(
+            rng: &mut T,
+            range: impl Into<GenerateRange<$output_type>>,
+        ) -> Self {
+            let GenerateRange {
+                start,
+                end_inclusive,
+            } = range.into();
+            if start == <$output_type>::MIN && end_inclusive == <$output_type>::MAX {
                 return rng.random::<$generate_type>() as $output_type;
             }
-            assert!(start <= high_inclusive, "Inverted range");
-            let span = (high_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
+            assert!(start <= end_inclusive, "Inverted range");
+            let span = (end_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
             if span == 0 {
                 return start;
             }
@@ -318,16 +316,12 @@ impl RangeFromRng for isize {
 
 impl RangeFromRng for f32 {
     #[allow(clippy::cast_precision_loss)]
-    fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
-        let start = match range.start_bound() {
-            Bound::Included(start) | Bound::Excluded(start) => *start,
-            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
-        };
-        let end = match range.end_bound() {
-            Bound::Included(end) | Bound::Excluded(end) => *end,
-            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
-        };
-        let span = end - start;
+    fn range_from_rng<T: Rng>(rng: &mut T, range: impl Into<GenerateRange<f32>>) -> Self {
+        let GenerateRange {
+            start,
+            end_inclusive,
+        } = range.into();
+        let span = end_inclusive - start;
 
         // An ideal algorithm should draw a real number, then round that to the nearest float
         // representation, in order to allow all possible float values to be possible outcomes.
@@ -354,15 +348,11 @@ impl RangeFromRng for f32 {
 
 impl RangeFromRng for f64 {
     #[allow(clippy::cast_precision_loss)]
-    fn range_from_rng<T: Rng, R: RangeBounds<Self>>(rng: &mut T, range: R) -> Self {
-        let start = match range.start_bound() {
-            Bound::Included(start) | Bound::Excluded(start) => *start,
-            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
-        };
-        let end = match range.end_bound() {
-            Bound::Included(end) | Bound::Excluded(end) => *end,
-            Bound::Unbounded => panic!("Unbounded ranges not supported for floats"),
-        };
+    fn range_from_rng<T: Rng>(rng: &mut T, range: impl Into<GenerateRange<f64>>) -> Self {
+        let GenerateRange {
+            start,
+            end_inclusive: end,
+        } = range.into();
         let span = end - start;
 
         // An ideal algorithm should draw a real number, then round that to the nearest float
