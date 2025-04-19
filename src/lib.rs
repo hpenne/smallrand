@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
+extern crate core;
 
 mod devices;
+mod ranges;
 mod rngs;
 mod xoshiro;
 

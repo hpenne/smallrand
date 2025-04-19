@@ -3,11 +3,11 @@
 
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevUrandom;
+use crate::ranges::GenerateRange;
 use crate::rngs::{RangeFromRng, ValueFromRng};
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
 use crate::{RandomDevice, Rng};
-use std::ops::RangeBounds;
 
 /// An xoshiro256++ 1.0 (see <https://prng.di.unimi.it>) random generator.
 /// This is an efficient PRNG with good random properties, but not cryptographically secure:
@@ -112,10 +112,9 @@ impl Xoshiro256pp {
     /// }
     /// ```
     #[inline(always)]
-    pub fn range<T, R>(&mut self, range: R) -> T
+    pub fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
     where
         T: RangeFromRng,
-        R: RangeBounds<T>,
         Self: Sized,
     {
         <Self as Rng>::range(self, range)
@@ -466,5 +465,37 @@ mod tests {
         let mut data = [0_u8; 4];
         rng.fill_u8(&mut data);
         assert_eq!(&vec![93, 91, 89, 95], &data);
+    }
+
+    #[test]
+    fn xoshiro_bounded_range_f64() {
+        let mut rng = xoshiro();
+        let mut min = 42_f64;
+        let mut max = 4_f64;
+        for _ in 0..100 * 256 {
+            let value: f64 = rng.range(4.0..42.0);
+            assert!(value >= 4.0);
+            assert!(value <= 42.0);
+            min = min.min(value);
+            max = max.max(value);
+        }
+        assert!(min < 4.01);
+        assert!(max >= 41.99);
+    }
+
+    #[test]
+    fn xoshiro_bounded_range_f32() {
+        let mut rng = xoshiro();
+        let mut min = 42_f32;
+        let mut max = 4_f32;
+        for _ in 0..100 * 256 {
+            let value: f32 = rng.range(4.0..42.0);
+            assert!(value >= 4.0);
+            assert!(value <= 42.0);
+            min = min.min(value);
+            max = max.max(value);
+        }
+        assert!(min < 4.01);
+        assert!(max >= 41.99);
     }
 }
