@@ -1,5 +1,4 @@
-use core::ops::{Range, RangeBounds};
-use std::collections::Bound;
+use core::ops::{Bound, Range, RangeBounds};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct GenerateRange<T> {

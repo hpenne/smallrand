@@ -2,7 +2,6 @@
 #![allow(clippy::inline_always)]
 
 use crate::ranges::GenerateRange;
-use core::ops::RangeBounds;
 
 /// This trait that all PRNGs must implement.
 /// It defines default implementations of functions

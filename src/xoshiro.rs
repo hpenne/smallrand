@@ -8,7 +8,6 @@ use crate::rngs::{RangeFromRng, ValueFromRng};
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
 use crate::{RandomDevice, Rng};
-use std::ops::RangeBounds;
 
 /// An xoshiro256++ 1.0 (see <https://prng.di.unimi.it>) random generator.
 /// This is an efficient PRNG with good random properties, but not cryptographically secure:
