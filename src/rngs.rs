@@ -3,7 +3,7 @@
 
 use crate::ranges::GenerateRange;
 
-/// This trait that all PRNGs must implement.
+/// This is the trait that all PRNGs must implement.
 /// It defines default implementations of functions
 /// to be supported by all PRNGs,
 /// as well the declarations of two internal helper
@@ -43,7 +43,7 @@ pub trait Rng {
     ///
     /// * `range`: The range of the uniform distribution.
     ///
-    /// returns: A random integer
+    /// returns: A random value in the range
     ///
     fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
     where

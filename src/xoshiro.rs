@@ -104,7 +104,7 @@ impl Xoshiro256pp {
     ///
     /// * `range`: The range of the uniform distribution.
     ///
-    /// returns: A random integer
+    /// returns: A random value in the range
     ///
     /// # Examples
     ///
