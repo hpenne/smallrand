@@ -240,82 +240,49 @@ zero_based_range_from_rng!(usize);
 
 macro_rules! range_from_rng {
     ($output_type: ty, $unsigned_type: ty, $generate_type: ty) => {
-        #[allow(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            clippy::cast_possible_wrap
-        )]
-        fn range_from_rng<T: Rng>(
-            rng: &mut T,
-            range: impl Into<GenerateRange<$output_type>>,
-        ) -> Self {
-            let GenerateRange {
-                start,
-                end_inclusive,
-            } = range.into();
-            if start == <$output_type>::MIN && end_inclusive == <$output_type>::MAX {
-                return rng.random::<$generate_type>() as $output_type;
+        impl RangeFromRng for $output_type {
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_possible_wrap
+            )]
+            fn range_from_rng<T: Rng>(
+                rng: &mut T,
+                range: impl Into<GenerateRange<$output_type>>,
+            ) -> Self {
+                let GenerateRange {
+                    start,
+                    end_inclusive,
+                } = range.into();
+                if start == <$output_type>::MIN && end_inclusive == <$output_type>::MAX {
+                    return rng.random::<$generate_type>() as $output_type;
+                }
+                assert!(start <= end_inclusive, "Inverted range");
+                let span = (end_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
+                if span == 0 {
+                    return start;
+                }
+                start.wrapping_add(
+                    (<$generate_type>::zero_based_range_from_rng(rng, <$generate_type>::from(span))
+                        as $output_type),
+                )
             }
-            assert!(start <= end_inclusive, "Inverted range");
-            let span = (end_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
-            if span == 0 {
-                return start;
-            }
-            start.wrapping_add(
-                (<$generate_type>::zero_based_range_from_rng(rng, <$generate_type>::from(span))
-                    as $output_type),
-            )
         }
     };
 }
 
-impl RangeFromRng for u8 {
-    range_from_rng! {u8, u8, u32}
-}
-
-impl RangeFromRng for i8 {
-    range_from_rng! {i8, u8, u32}
-}
-
-impl RangeFromRng for u16 {
-    range_from_rng! {u16, u16, u32}
-}
-
-impl RangeFromRng for i16 {
-    range_from_rng! {i16, u16, u32}
-}
-
-impl RangeFromRng for u32 {
-    range_from_rng! {u32, u32, u32}
-}
-
-impl RangeFromRng for i32 {
-    range_from_rng! {i32, u32, u32}
-}
-
-impl RangeFromRng for u64 {
-    range_from_rng! {u64, u64, u64}
-}
-
-impl RangeFromRng for i64 {
-    range_from_rng! {i64, u64, u64}
-}
-
-impl RangeFromRng for u128 {
-    range_from_rng! {u128, u128, u128}
-}
-
-impl RangeFromRng for i128 {
-    range_from_rng! {i128, u128, u128}
-}
-
-impl RangeFromRng for usize {
-    range_from_rng! {usize, usize, usize}
-}
-
-impl RangeFromRng for isize {
-    range_from_rng! {isize, usize, usize}
-}
+range_from_rng! {u8, u8, u32}
+range_from_rng! {i8, u8, u32}
+range_from_rng! {u16, u16, u32}
+range_from_rng! {i16, u16, u32}
+range_from_rng! {u32, u32, u32}
+range_from_rng! {i32, u32, u32}
+range_from_rng! {u64, u64, u64}
+range_from_rng! {i64, u64, u64}
+range_from_rng! {u128, u128, u128}
+range_from_rng! {i128, u128, u128}
+range_from_rng! {usize, usize, usize}
+range_from_rng! {isize, usize, usize}
 
 impl RangeFromRng for f32 {
     #[allow(clippy::cast_precision_loss)]
@@ -386,24 +353,28 @@ mod tests {
     use crate::rngs::Rng;
 
     struct CountingRng {
-        next: u32,
+        next: u64,
     }
 
     impl CountingRng {
         fn new() -> Self {
-            Self { next: 0 }
+            Self {
+                // Start near the max to ensure that the uniformity tests
+                // hit the area where numbers must be discarded:
+                next: u64::MAX - 1000,
+            }
         }
     }
 
     impl Rng for CountingRng {
         fn random_u32(&mut self) -> u32 {
-            let result = self.next;
-            self.next = self.next + 1;
-            result
+            self.random_u64() as u32
         }
 
         fn random_u64(&mut self) -> u64 {
-            self.random_u32() as u64
+            let result = self.next;
+            self.next = self.next.wrapping_add(1);
+            result
         }
     }
 
@@ -511,7 +482,7 @@ mod tests {
         let mut rng = CountingRng::new();
         let mut numbers = vec![1, 2, 3, 4, 5];
         rng.shuffle(&mut numbers);
-        assert_eq!(numbers, vec![1, 3, 5, 2, 4]);
+        assert_eq!(numbers, vec![1, 2, 4, 3, 5]);
     }
 
     #[test]
