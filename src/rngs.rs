@@ -463,6 +463,45 @@ mod tests {
         assert_eq!(0u8, rng.range(0u8..=0));
     }
 
+    struct FloatRangeGenerator(u128);
+
+    impl FloatRangeGenerator {
+        fn new(leading_zeros: usize) -> Self {
+            Self(
+                ((1_u128 << 127) >> leading_zeros)
+                    | (0xDEADBEEFDEADBEEF0000000000000000_u128 >> (leading_zeros + 1)),
+            )
+        }
+    }
+
+    impl Rng for FloatRangeGenerator {
+        fn random_u32(&mut self) -> u32 {
+            0
+        }
+
+        fn random_u64(&mut self) -> u64 {
+            let random = self.0 >> 64;
+            self.0 = self.0 << 64;
+            random as u64
+        }
+    }
+
+    #[test]
+    fn test_float_ranges() {
+        for leading_zeros in 0..64 {
+            let mut rng = FloatRangeGenerator::new(leading_zeros);
+            let value: f64 = rng.range(0.0..1.0);
+            let bytes = value.to_ne_bytes();
+
+            // The algorithm should always fill the manitissa, so the "DEADBEEF" pattern
+            // should always be in the same place:
+            assert_eq!(bytes[5], 0xea);
+            assert_eq!(bytes[4], 0xdb);
+            assert_eq!(bytes[3], 0xee);
+            assert_eq!(bytes[2], 0xfd);
+        }
+    }
+
     #[test]
     fn test_shuffle() {
         let mut rng = CountingRng::new();

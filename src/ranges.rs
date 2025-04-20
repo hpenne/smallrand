@@ -67,12 +67,12 @@ from_range!(f64);
 mod test {
     use super::*;
 
-    fn to_range(range: impl RangeBounds<u8>) -> GenerateRange<u8> {
-        range.into()
-    }
-
     #[test]
     fn integer_conversions() {
+        fn to_range(range: impl RangeBounds<u8>) -> GenerateRange<u8> {
+            range.into()
+        }
+
         assert_eq!(
             GenerateRange {
                 start: 2_u8,
@@ -82,10 +82,32 @@ mod test {
         );
         assert_eq!(
             GenerateRange {
-                start: 2_u8,
+                start: u8::MIN,
                 end_inclusive: 42
             },
-            to_range(2..=42)
+            to_range(..=42)
+        );
+        assert_eq!(
+            GenerateRange {
+                start: u8::MIN,
+                end_inclusive: u8::MAX
+            },
+            to_range(..)
+        );
+    }
+
+    #[test]
+    fn float_conversions() {
+        fn to_range(range: Range<f64>) -> GenerateRange<f64> {
+            range.into()
+        }
+
+        assert_eq!(
+            GenerateRange {
+                start: 2_f64,
+                end_inclusive: 42_f64
+            },
+            to_range(2.0..42.0)
         );
     }
 }
