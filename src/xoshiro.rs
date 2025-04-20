@@ -95,6 +95,10 @@ impl Xoshiro256pp {
 
     /// Generates a single random integer in a specified range.
     /// The distribution is strictly uniform.
+    /// The following types are supported:
+    /// u8, u16, u64, u128, usize, i8, i16, i64, i128, isize, f32, f64
+    ///
+    /// Any kind of range is supported for integers, but only `Range` for floats.
     ///
     /// # Arguments
     ///
@@ -109,6 +113,7 @@ impl Xoshiro256pp {
     /// {
     /// let mut rng = smallrand::Xoshiro256pp::new();
     /// let random_value : u32 = rng.range(..42);
+    /// let float : f64 = rng.range::<f64>(1.0..42.0);
     /// }
     /// ```
     #[inline(always)]

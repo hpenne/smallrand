@@ -32,8 +32,12 @@ pub trait Rng {
         T::value_from_rng(self)
     }
 
-    /// Generates a single random integer in a specified range.
+    /// Generates a single random integer or float in a specified range.
     /// The distribution is strictly uniform.
+    /// The following types are supported:
+    /// u8, u16, u64, u128, usize, i8, i16, i64, i128, isize, f32, f64
+    ///
+    /// Any kind of range is supported for integers, but only `Range` for floats.
     ///
     /// # Arguments
     ///
