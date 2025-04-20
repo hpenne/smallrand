@@ -1,10 +1,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::inline_always)]
 
-use core::ops::Bound;
-use core::ops::RangeBounds;
+use crate::ranges::GenerateRange;
 
-/// This trait that all PRNGs must implement.
+/// This is the trait that all PRNGs must implement.
 /// It defines default implementations of functions
 /// to be supported by all PRNGs,
 /// as well the declarations of two internal helper
@@ -33,19 +32,22 @@ pub trait Rng {
         T::value_from_rng(self)
     }
 
-    /// Generates a single random integer in a specified range.
+    /// Generates a single random integer or float in a specified range.
     /// The distribution is strictly uniform.
+    /// The following types are supported:
+    /// u8, u16, u64, u128, usize, i8, i16, i64, i128, isize, f32, f64
+    ///
+    /// Any kind of range is supported for integers, but only `Range` for floats.
     ///
     /// # Arguments
     ///
     /// * `range`: The range of the uniform distribution.
     ///
-    /// returns: A random integer
+    /// returns: A random value in the range
     ///
-    fn range<T, R>(&mut self, range: R) -> T
+    fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
     where
         T: RangeFromRng,
-        R: RangeBounds<T>,
         Self: Sized,
     {
         T::range_from_rng(self, range)
@@ -132,7 +134,7 @@ pub trait Rng {
         // This is the forward version of the Fisher-Yates/Knuth shuffle:
         // https://en.wikipedia.org/wiki/Fisher–Yates_shuffle
         if !target.is_empty() {
-            for inx in 0..target.len() - 1 {
+            for inx in 0_usize..target.len() - 1 {
                 // Note: "inx" is part of the range, to allow the current element to be swapped
                 // with itself. Otherwise, it will always be moved, which would be incorrect.
                 target.swap(inx, self.range(inx..target.len()));
@@ -205,7 +207,9 @@ impl ValueFromRng for usize {
 }
 
 pub trait RangeFromRng {
-    fn range_from_rng<T: Rng, R: RangeBounds<Self>>(device: &mut T, range: R) -> Self;
+    fn range_from_rng<T: Rng>(device: &mut T, range: impl Into<GenerateRange<Self>>) -> Self
+    where
+        Self: Sized;
 }
 
 trait ZeroBasedRange {
@@ -241,27 +245,24 @@ macro_rules! range_from_rng {
             clippy::cast_sign_loss,
             clippy::cast_possible_wrap
         )]
-        fn range_from_rng<T: Rng, R: RangeBounds<$output_type>>(device: &mut T, range: R) -> Self {
-            let start: $output_type = match range.start_bound() {
-                Bound::Included(start) => *start,
-                Bound::Excluded(start) => start.checked_add(1).expect("Range start overflow"),
-                Bound::Unbounded => <$output_type>::MIN,
-            };
-            let high_inclusive: $output_type = match range.end_bound() {
-                Bound::Included(start) => *start,
-                Bound::Excluded(start) => start.checked_sub(1).expect("Range end underflow"),
-                Bound::Unbounded => <$output_type>::MAX,
-            };
-            if start == <$output_type>::MIN && high_inclusive == <$output_type>::MAX {
-                return device.random::<$generate_type>() as $output_type;
+        fn range_from_rng<T: Rng>(
+            rng: &mut T,
+            range: impl Into<GenerateRange<$output_type>>,
+        ) -> Self {
+            let GenerateRange {
+                start,
+                end_inclusive,
+            } = range.into();
+            if start == <$output_type>::MIN && end_inclusive == <$output_type>::MAX {
+                return rng.random::<$generate_type>() as $output_type;
             }
-            assert!(start <= high_inclusive, "Inverted range");
-            let span = (high_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
+            assert!(start <= end_inclusive, "Inverted range");
+            let span = (end_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
             if span == 0 {
                 return start;
             }
             start.wrapping_add(
-                (<$generate_type>::zero_based_range_from_rng(device, <$generate_type>::from(span))
+                (<$generate_type>::zero_based_range_from_rng(rng, <$generate_type>::from(span))
                     as $output_type),
             )
         }
@@ -314,6 +315,70 @@ impl RangeFromRng for usize {
 
 impl RangeFromRng for isize {
     range_from_rng! {isize, usize, usize}
+}
+
+impl RangeFromRng for f32 {
+    #[allow(clippy::cast_precision_loss)]
+    fn range_from_rng<T: Rng>(rng: &mut T, range: impl Into<GenerateRange<f32>>) -> Self {
+        let GenerateRange {
+            start,
+            end_inclusive,
+        } = range.into();
+        let span = end_inclusive - start;
+
+        // An ideal algorithm should draw a real number, then round that to the nearest float
+        // representation, in order to allow all possible float values to be possible outcomes.
+        // This would be equivalent to drawing an int with virtually infinite size before
+        // converting to float.
+        // In practice, we just need enough bits to ensure that the mantissa is fully used.
+        // A u64 will suffice, unless it has enough leading zero bits that there are less
+        // than 24 remaining bits (because the mantissa has 23 bits plus an initial implicit 1).
+        // We thus check the number of leading 0 bits, and draw one more random u64
+        // to make the integer value u128 if necessary.
+        // It is theoretically possible that a u128 this still not enough, but the probability
+        // of that many leading zero bits is more than small enough to ignore.
+        // Allways using u128 would be simpler, but not as fast.
+        let r = rng.random::<u64>();
+        let normalized = if (r >> 23) != 0 {
+            (r as f32) / 2_f32.powi(64)
+        } else {
+            let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
+            (r as f32) / 2_f32.powi(128)
+        };
+        normalized * span + start
+    }
+}
+
+impl RangeFromRng for f64 {
+    #[allow(clippy::cast_precision_loss)]
+    fn range_from_rng<T: Rng>(rng: &mut T, range: impl Into<GenerateRange<f64>>) -> Self {
+        let GenerateRange {
+            start,
+            end_inclusive: end,
+        } = range.into();
+        let span = end - start;
+
+        // An ideal algorithm should draw a real number, then round that to the nearest float
+        // representation, in order to allow all possible float values to be possible outcomes.
+        // This would be equivalent to drawing an int with virtually infinite size before
+        // converting to float.
+        // In practice, we just need enough bits to ensure that the mantissa is fully used.
+        // A u64 will suffice, unless it has enough leading zero bits that there are less
+        // than 53 remaining bits (because the mantissa has 52 bits plus an initial implicit 1).
+        // We thus check the number of leading 0 bits, and draw one more random u64
+        // to make the integer value u128 if necessary.
+        // It is theoretically possible that a u128 this still not enough, but the probability
+        // of that many leading zero bits is more than small enough to ignore.
+        // Allways using u128 would be simpler, but not as fast.
+        let r = rng.random::<u64>();
+        let normalized = if (r >> 52) != 0 {
+            (r as f64) / 2_f64.powi(64)
+        } else {
+            let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
+            (r as f64) / 2_f64.powi(128)
+        };
+        normalized * span + start
+    }
 }
 
 #[cfg(test)]
@@ -400,6 +465,45 @@ mod tests {
         let _: u8 = rng.range(..=255);
         assert_eq!(255u8, rng.range(255u8..=255));
         assert_eq!(0u8, rng.range(0u8..=0));
+    }
+
+    struct FloatRangeGenerator(u128);
+
+    impl FloatRangeGenerator {
+        fn new(leading_zeros: usize) -> Self {
+            Self(
+                ((1_u128 << 127) >> leading_zeros)
+                    | (0xDEADBEEFDEADBEEF0000000000000000_u128 >> (leading_zeros + 1)),
+            )
+        }
+    }
+
+    impl Rng for FloatRangeGenerator {
+        fn random_u32(&mut self) -> u32 {
+            0
+        }
+
+        fn random_u64(&mut self) -> u64 {
+            let random = self.0 >> 64;
+            self.0 = self.0 << 64;
+            random as u64
+        }
+    }
+
+    #[test]
+    fn test_float_ranges() {
+        for leading_zeros in 0..64 {
+            let mut rng = FloatRangeGenerator::new(leading_zeros);
+            let value: f64 = rng.range(0.0..1.0);
+            let bytes = value.to_ne_bytes();
+
+            // The algorithm should always fill the manitissa, so the "DEADBEEF" pattern
+            // should always be in the same place:
+            assert_eq!(bytes[5], 0xea);
+            assert_eq!(bytes[4], 0xdb);
+            assert_eq!(bytes[3], 0xee);
+            assert_eq!(bytes[2], 0xfd);
+        }
     }
 
     #[test]
