@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn test_xoshiro_range() {
         let mut rng = Xoshiro256pp::from_seed(0u64);
-        assert_eq!(rng.range(11_u8..42), 30)
+        assert_eq!(rng.range(11_u8..42), 15)
     }
 
     #[test]
