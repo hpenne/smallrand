@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::inline_always)]
 
 use crate::ranges::GenerateRange;
 
@@ -23,7 +22,7 @@ pub trait Rng {
     ///
     /// returns: A random integer
     ///
-    #[inline(always)]
+    #[inline]
     fn random<T>(&mut self) -> T
     where
         T: ValueFromRng,
@@ -57,7 +56,7 @@ pub trait Rng {
     ///
     /// returns: An iterator that outputs random values. Never None.
     ///
-    #[inline(always)]
+    #[inline]
     fn iter<T>(&mut self) -> impl Iterator<Item = T>
     where
         T: ValueFromRng,
@@ -71,7 +70,7 @@ pub trait Rng {
     ///
     /// returns: An iterator that outputs random u8 values. Never None.
     ///
-    #[inline(always)]
+    #[inline]
     fn iter_u8(&mut self) -> impl Iterator<Item = u8>
     where
         Self: Sized,
@@ -85,7 +84,7 @@ pub trait Rng {
     ///
     /// * `destination`: The slice to fill
     ///
-    #[inline(always)]
+    #[inline]
     fn fill<T>(&mut self, destination: &mut [T])
     where
         T: ValueFromRng,
@@ -103,7 +102,7 @@ pub trait Rng {
     ///
     /// * `destination`: The slice to fill
     ///
-    #[inline(always)]
+    #[inline]
     fn fill_u8(&mut self, destination: &mut [u8])
     where
         Self: Sized,
@@ -125,7 +124,7 @@ pub trait Rng {
     ///
     /// * `target`: The slice to shuffle
     ///
-    #[inline(always)]
+    #[inline]
     fn shuffle<T>(&mut self, target: &mut [T])
     where
         T: Clone,
@@ -219,7 +218,7 @@ trait ZeroBasedRange {
 macro_rules! zero_based_range_from_rng_lemire {
     ($output_type: ty, $bigger_type: ty) => {
         impl ZeroBasedRange for $output_type {
-            #[inline(always)]
+            #[inline]
             #[allow(clippy::cast_possible_truncation)]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
                 // Lemire's algorithm (https://lemire.me/blog/2016/06/30/fast-random-shuffling/)
@@ -250,7 +249,7 @@ zero_based_range_from_rng_lemire!(u64, u128);
 macro_rules! zero_based_range_from_rng {
     ($output_type: ty) => {
         impl ZeroBasedRange for u128 {
-            #[inline(always)]
+            #[inline]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
                 // We're using the simpler rejection sampling for u128.
                 // Lemire get very complicated for u128 when there is no "u256",

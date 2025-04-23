@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::inline_always)]
 
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevUrandom;
@@ -84,7 +83,7 @@ impl Xoshiro256pp {
     /// let random_value : u32 = rng.random();
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn random<T>(&mut self) -> T
     where
         T: ValueFromRng,
@@ -116,7 +115,7 @@ impl Xoshiro256pp {
     /// let float : f64 = rng.range::<f64>(1.0..42.0);
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
     where
         T: RangeFromRng,
@@ -138,7 +137,7 @@ impl Xoshiro256pp {
     /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn iter<'a, T>(&'a mut self) -> impl Iterator<Item = T> + 'a
     where
         T: ValueFromRng + 'a,
@@ -161,7 +160,7 @@ impl Xoshiro256pp {
     /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn iter_u8(&mut self) -> impl Iterator<Item = u8> + '_
     where
         Self: Sized,
@@ -185,7 +184,7 @@ impl Xoshiro256pp {
     /// rng.fill(&mut data);
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn fill<T>(&mut self, destination: &mut [T])
     where
         T: ValueFromRng,
@@ -211,7 +210,7 @@ impl Xoshiro256pp {
     /// rng.fill_u8(&mut data);
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn fill_u8(&mut self, destination: &mut [u8])
     where
         Self: Sized,
@@ -235,7 +234,7 @@ impl Xoshiro256pp {
     /// rng.shuffle(&mut numbers);
     /// }
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn shuffle<T>(&mut self, target: &mut [T])
     where
         T: Clone,
@@ -245,7 +244,7 @@ impl Xoshiro256pp {
     }
 
     // This is "next" from the C reference implementation
-    #[inline(always)]
+    #[inline]
     pub fn next_random(&mut self) -> u64 {
         let result = (self.state[0].wrapping_add(self.state[3]))
             .rotate_left(23)
@@ -275,12 +274,12 @@ impl Default for Xoshiro256pp {
 
 impl Rng for Xoshiro256pp {
     #[allow(clippy::cast_possible_truncation)]
-    #[inline(always)]
+    #[inline]
     fn random_u32(&mut self) -> u32 {
         self.random_u64() as u32
     }
 
-    #[inline(always)]
+    #[inline]
     fn random_u64(&mut self) -> u64 {
         self.next_random()
     }
