@@ -216,11 +216,46 @@ trait ZeroBasedRange {
     fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self;
 }
 
-macro_rules! zero_based_range_from_rng {
-    ($output_type: ty) => {
+macro_rules! zero_based_range_from_rng_lemire {
+    ($output_type: ty, $bigger_type: ty) => {
         impl ZeroBasedRange for $output_type {
             #[inline(always)]
+            #[allow(clippy::cast_possible_truncation)]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
+                // Lemire's algorithm (https://lemire.me/blog/2016/06/30/fast-random-shuffling/)
+                const SIZE_IN_BITS: usize = core::mem::size_of::<$output_type>() * 8;
+                let m =
+                    <$bigger_type>::from(rng.random::<$output_type>()) * <$bigger_type>::from(span);
+                let mut high = (m >> SIZE_IN_BITS) as $output_type;
+                let mut low = m as $output_type;
+                if low < span {
+                    let threshold = span.wrapping_neg() % span;
+                    while low < threshold {
+                        let m = <$bigger_type>::from(rng.random::<$output_type>())
+                            * <$bigger_type>::from(span);
+                        high = (m >> SIZE_IN_BITS) as $output_type;
+                        low = m as $output_type;
+                    }
+                }
+                high
+            }
+        }
+    };
+}
+
+zero_based_range_from_rng_lemire!(u16, u32);
+zero_based_range_from_rng_lemire!(u32, u64);
+zero_based_range_from_rng_lemire!(u64, u128);
+
+macro_rules! zero_based_range_from_rng {
+    ($output_type: ty) => {
+        impl ZeroBasedRange for u128 {
+            #[inline(always)]
+            fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
+                // We're using the simpler rejection sampling for u128.
+                // Lemire get very complicated for u128 when there is no "u256",
+                // and the total speed difference on the "bigger" CPUs that are likely to
+                // need random u128s in a range is not that big (measured to 7% on an M1)
                 let mut random_value: Self = rng.random();
                 let reduced_max = Self::MAX - span + 1;
                 let max_valid_value = Self::MAX - (reduced_max % span);
@@ -233,89 +268,66 @@ macro_rules! zero_based_range_from_rng {
     };
 }
 
-zero_based_range_from_rng!(u32);
-zero_based_range_from_rng!(u64);
 zero_based_range_from_rng!(u128);
-zero_based_range_from_rng!(usize);
 
 macro_rules! range_from_rng {
     ($output_type: ty, $unsigned_type: ty, $generate_type: ty) => {
-        #[allow(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            clippy::cast_possible_wrap
-        )]
-        fn range_from_rng<T: Rng>(
-            rng: &mut T,
-            range: impl Into<GenerateRange<$output_type>>,
-        ) -> Self {
-            let GenerateRange {
-                start,
-                end_inclusive,
-            } = range.into();
-            if start == <$output_type>::MIN && end_inclusive == <$output_type>::MAX {
-                return rng.random::<$generate_type>() as $output_type;
+        impl RangeFromRng for $output_type {
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_possible_wrap,
+                clippy::cast_lossless
+            )]
+            fn range_from_rng<T: Rng>(
+                rng: &mut T,
+                range: impl Into<GenerateRange<$output_type>>,
+            ) -> Self {
+                let GenerateRange {
+                    start,
+                    end_inclusive,
+                } = range.into();
+                if start == <$output_type>::MIN && end_inclusive == <$output_type>::MAX {
+                    return rng.random::<$generate_type>() as $output_type;
+                }
+                assert!(start <= end_inclusive, "Inverted range");
+                let span = (end_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
+                if span == 0 {
+                    return start;
+                }
+                start.wrapping_add(
+                    (<$generate_type>::zero_based_range_from_rng(rng, span as $generate_type)
+                        as $output_type),
+                )
             }
-            assert!(start <= end_inclusive, "Inverted range");
-            let span = (end_inclusive.wrapping_sub(start).wrapping_add(1)) as $unsigned_type;
-            if span == 0 {
-                return start;
-            }
-            start.wrapping_add(
-                (<$generate_type>::zero_based_range_from_rng(rng, <$generate_type>::from(span))
-                    as $output_type),
-            )
         }
     };
 }
 
-impl RangeFromRng for u8 {
-    range_from_rng! {u8, u8, u32}
-}
+range_from_rng! {u8, u8, u16}
+range_from_rng! {i8, u8, u16}
+range_from_rng! {u16, u16, u32}
+range_from_rng! {i16, u16, u32}
+range_from_rng! {u32, u32, u32}
+range_from_rng! {i32, u32, u32}
+range_from_rng! {u64, u64, u64}
+range_from_rng! {i64, u64, u64}
+range_from_rng! {u128, u128, u128}
+range_from_rng! {i128, u128, u128}
 
-impl RangeFromRng for i8 {
-    range_from_rng! {i8, u8, u32}
-}
+#[cfg(target_pointer_width = "16")]
+range_from_rng! {usize, usize, u32}
+#[cfg(target_pointer_width = "32")]
+range_from_rng! {usize, usize, u32}
+#[cfg(target_pointer_width = "64")]
+range_from_rng! {usize, usize, u32}
 
-impl RangeFromRng for u16 {
-    range_from_rng! {u16, u16, u32}
-}
-
-impl RangeFromRng for i16 {
-    range_from_rng! {i16, u16, u32}
-}
-
-impl RangeFromRng for u32 {
-    range_from_rng! {u32, u32, u32}
-}
-
-impl RangeFromRng for i32 {
-    range_from_rng! {i32, u32, u32}
-}
-
-impl RangeFromRng for u64 {
-    range_from_rng! {u64, u64, u64}
-}
-
-impl RangeFromRng for i64 {
-    range_from_rng! {i64, u64, u64}
-}
-
-impl RangeFromRng for u128 {
-    range_from_rng! {u128, u128, u128}
-}
-
-impl RangeFromRng for i128 {
-    range_from_rng! {i128, u128, u128}
-}
-
-impl RangeFromRng for usize {
-    range_from_rng! {usize, usize, usize}
-}
-
-impl RangeFromRng for isize {
-    range_from_rng! {isize, usize, usize}
-}
+#[cfg(target_pointer_width = "16")]
+range_from_rng! {isize, usize, u32}
+#[cfg(target_pointer_width = "32")]
+range_from_rng! {isize, usize, u32}
+#[cfg(target_pointer_width = "64")]
+range_from_rng! {isize, usize, u64}
 
 impl RangeFromRng for f32 {
     #[allow(clippy::cast_precision_loss)]
@@ -385,36 +397,44 @@ impl RangeFromRng for f64 {
 mod tests {
     use crate::rngs::Rng;
 
-    struct CountingRng {
-        next: u32,
-    }
+    struct CountingRng(pub u64);
 
     impl CountingRng {
         fn new() -> Self {
-            Self { next: 0 }
+            // Start near the max to ensure that the uniformity tests
+            // hit the area where numbers must be discarded:
+            Self(18446744073709550681)
         }
     }
 
     impl Rng for CountingRng {
         fn random_u32(&mut self) -> u32 {
-            let result = self.next;
-            self.next = self.next + 1;
-            result
+            self.random_u64() as u32
         }
 
         fn random_u64(&mut self) -> u64 {
-            self.random_u32() as u64
+            let result = self.0;
+            self.0 = self.0.wrapping_add(1);
+            result
         }
     }
 
     #[test]
     fn test_range_u8_is_uniform() {
-        let mut rng = CountingRng::new();
         const START: u8 = 13;
         const END: u8 = 42;
         const LEN: usize = (END - START) as usize;
-        let mut count: [u8; LEN] = [0; LEN];
-        for _ in 0..100 * LEN {
+
+        // u8 ranges are generated from u16 random values.
+        // If we start the CountingRng at 0 and draw twice as many range values
+        // as the Lemire algorithm can output for all possible u16 values,
+        // then we will have tested all possible outcomes, and the distribution
+        // should be uniform:
+        let mut rng = CountingRng(0);
+        let iterations: usize = 2 * ((1 << 16) / LEN) * LEN;
+
+        let mut count: [usize; LEN] = [0; LEN];
+        for _i in 0..iterations {
             let value = rng.range(START..END);
             assert!(value >= START);
             assert!(value < END);
@@ -428,12 +448,20 @@ mod tests {
 
     #[test]
     fn test_range_i8_is_uniform() {
-        let mut rng = CountingRng::new();
         const START: i8 = -127;
         const END: i8 = 126;
         const LEN: usize = ((END as isize) - (START as isize)) as usize;
-        let mut count: [u8; LEN] = [0; LEN];
-        for _ in 0..100 * LEN {
+
+        // i8 ranges are generated from u16 random values.
+        // If we start the CountingRng at 0 and draw twice as many range values
+        // as the Lemire algorithm can output for all possible u16 values,
+        // then we will have tested all possible outcomes, and the distribution
+        // should be uniform:
+        let mut rng = CountingRng(0);
+        let iterations: usize = 2 * ((1 << 16) / LEN) * LEN;
+
+        let mut count: [usize; LEN] = [0; LEN];
+        for _ in 0..iterations {
             let value = rng.range(START..END);
             assert!(value >= START);
             assert!(value < END);
@@ -465,6 +493,59 @@ mod tests {
         let _: u8 = rng.range(..=255);
         assert_eq!(255u8, rng.range(255u8..=255));
         assert_eq!(0u8, rng.range(0u8..=0));
+    }
+
+    struct CountingRng128 {
+        next: u128,
+        high: bool,
+    }
+
+    impl CountingRng128 {
+        fn new() -> Self {
+            // Start near the max to ensure that the uniformity tests
+            // hit the area where numbers must be discarded:
+            Self {
+                next: u128::MAX - 100,
+                high: true,
+            }
+        }
+    }
+
+    impl Rng for CountingRng128 {
+        fn random_u32(&mut self) -> u32 {
+            unimplemented!()
+        }
+
+        fn random_u64(&mut self) -> u64 {
+            let random = if self.high {
+                (self.next >> 64) as u64
+            } else {
+                let low = self.next as u64;
+                self.next = self.next.wrapping_add(1);
+                low
+            };
+            self.high = !self.high;
+            random
+        }
+    }
+
+    #[test]
+    fn test_range_u128_is_uniform() {
+        let mut rng = CountingRng128::new();
+        const START: u128 = 13;
+        const END: u128 = 42;
+        const LEN: usize = (END - START) as usize;
+        let mut count: [u8; LEN] = [0; LEN];
+        for _ in 0..100 * LEN {
+            let value = rng.range(START..END);
+            assert!(value >= START);
+            assert!(value < END);
+            let inx = (value - START) as usize;
+            count[inx] += 1;
+        }
+        for i in 0..LEN {
+            assert_eq!(count[0], count[i]);
+        }
     }
 
     struct FloatRangeGenerator(u128);
@@ -511,7 +592,7 @@ mod tests {
         let mut rng = CountingRng::new();
         let mut numbers = vec![1, 2, 3, 4, 5];
         rng.shuffle(&mut numbers);
-        assert_eq!(numbers, vec![1, 3, 5, 2, 4]);
+        assert_eq!(numbers, vec![5, 1, 2, 3, 4]);
     }
 
     #[test]
