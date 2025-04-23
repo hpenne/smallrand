@@ -216,7 +216,7 @@ trait ZeroBasedRange {
     fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self;
 }
 
-macro_rules! zero_based_range_from_rng {
+macro_rules! zero_based_range_from_rng_lemire {
     ($output_type: ty, $bigger_type: ty) => {
         impl ZeroBasedRange for $output_type {
             #[inline(always)]
@@ -243,26 +243,32 @@ macro_rules! zero_based_range_from_rng {
     };
 }
 
-zero_based_range_from_rng!(u16, u32);
-zero_based_range_from_rng!(u32, u64);
-zero_based_range_from_rng!(u64, u128);
+zero_based_range_from_rng_lemire!(u16, u32);
+zero_based_range_from_rng_lemire!(u32, u64);
+zero_based_range_from_rng_lemire!(u64, u128);
 
-impl ZeroBasedRange for u128 {
-    #[inline(always)]
-    fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
-        // We're using the simpler rejection sampling for u128.
-        // Lemire get very complicated for u128 when there is no "u256",
-        // and the total speed difference on the "bigger" CPUs that are likely to
-        // need random u128s in a range is not that big (measured to 7% on an M1)
-        let mut random_value: Self = rng.random();
-        let reduced_max = Self::MAX - span + 1;
-        let max_valid_value = Self::MAX - (reduced_max % span);
-        while random_value > max_valid_value {
-            random_value = rng.random();
+macro_rules! zero_based_range_from_rng {
+    ($output_type: ty) => {
+        impl ZeroBasedRange for u128 {
+            #[inline(always)]
+            fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
+                // We're using the simpler rejection sampling for u128.
+                // Lemire get very complicated for u128 when there is no "u256",
+                // and the total speed difference on the "bigger" CPUs that are likely to
+                // need random u128s in a range is not that big (measured to 7% on an M1)
+                let mut random_value: Self = rng.random();
+                let reduced_max = Self::MAX - span + 1;
+                let max_valid_value = Self::MAX - (reduced_max % span);
+                while random_value > max_valid_value {
+                    random_value = rng.random();
+                }
+                random_value % span
+            }
         }
-        random_value % span
-    }
+    };
 }
+
+zero_based_range_from_rng!(u128);
 
 macro_rules! range_from_rng {
     ($output_type: ty, $unsigned_type: ty, $generate_type: ty) => {
