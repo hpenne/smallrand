@@ -22,13 +22,14 @@ let mut rng = DefaultRng::new();
 let coin_flip : bool = rng.random();
 let some_int = rng.random::<u32>();
 let uniformly_distributed : u32 = rng.range(0..=42);
+let a_float : f64 = rng.range(0.0..42.0);
 ```
 
 FAQ
 ---
 
 * Where does the seed come from?
-    - The seed is read from /dev/random on Linux-like platforms, and comes from the `getrandom` crate for others.
+    - The seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for others.
 * Why is there no CSPRNG?
     - First, don't implement crypto yourself. If you think doing that is a good idea, then you probably don't know the
       subject
@@ -40,9 +41,12 @@ FAQ
     - `smallrand` has been benchmarked against the same algorithm from the `rand` crate (`SmallRng`/Xoshiro256++) using
       `criterion`. On my Apple M1, `smallrand` is equal in performance when generating u64 values, more than twice as
       fast generating uniformly distributed ranges
-      of u64 values, and approximately 10% faster when filling a slice of bytes with random data.
+      of u64 values, and approximately 10% faster when filling a slice of bytes with random data. `rand` is 7% faster at
+      generating ranges of f64 values, which could be caused by `rand` using a simpler algorithm that does not use the
+      available dynamic range of the mantissa when the generated value is close to zero.
 * Why would I choose this over `rand`?
-    - `rand` is very large and difficult to audit. Its dependencies (as of 0.9) include `zerocopy`, which contains a
+    - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`, which
+      contains a
       huge amount of unsafe code.
     - Its API encourages you to use thread local RNG instances. This creates unnecessary (thread) global state, which is
       almost always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your
@@ -50,7 +54,7 @@ FAQ
       async. Furthermore, it is a potential security risk (see [below](#the-juniper-incident)).
     - Unlike `rand`, this crate does not require you to import any traits or anything else beyond the RNG you're using.
     - This crate has minimal dependencies and does not intend to change much, so you won't have to update it very often.
-    - This crate compiles much faster than `rand`.
+    - This crate compiles faster than `rand` due to it smaller size and minimal dependencies.
 * Why would I choose this over `fastrand`?
     - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++.
 

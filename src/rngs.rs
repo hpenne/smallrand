@@ -3,10 +3,9 @@
 use crate::ranges::GenerateRange;
 
 /// This is the trait that all PRNGs must implement.
-/// It defines default implementations of functions
-/// to be supported by all PRNGs,
-/// as well the declarations of two internal helper
-/// functions that provide values to these functions.
+/// It declares two functions that PRNGs must implement (to generate u32 and u64 random values),
+/// and based on these provides implementations of all the other
+/// functions supported by the crate.
 pub trait Rng {
     /// Generates a random u32.
     /// Used by other functions as input.
@@ -67,6 +66,8 @@ pub trait Rng {
 
     /// Provides an iterator that emits random u8 values.
     /// Same as the generic variant, but more efficient.
+    /// If you want to fill a slice of u8 with values,
+    /// then the `fill_u8` function is even more performant.
     ///
     /// returns: An iterator that outputs random u8 values. Never None.
     ///
@@ -251,10 +252,6 @@ macro_rules! zero_based_range_from_rng {
         impl ZeroBasedRange for u128 {
             #[inline]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
-                // We're using the simpler rejection sampling for u128.
-                // Lemire get very complicated for u128 when there is no "u256",
-                // and the total speed difference on the "bigger" CPUs that are likely to
-                // need random u128s in a range is not that big (measured to 7% on an M1)
                 let mut random_value: Self = rng.random();
                 let reduced_max = Self::MAX - span + 1;
                 let max_valid_value = Self::MAX - (reduced_max % span);
@@ -267,6 +264,11 @@ macro_rules! zero_based_range_from_rng {
     };
 }
 
+// We're using the simpler rejection sampling for u128.
+// Lemire gets very complicated for u128 when there is no "u256"
+// and the implementation would be virtually untestable.
+// Also, the total speed difference on the "bigger" CPUs that are likely to
+// need random u128s in a range is not that big (measured to 7% on an M1 for u64)
 zero_based_range_from_rng!(u128);
 
 macro_rules! range_from_rng {
@@ -303,14 +305,22 @@ macro_rules! range_from_rng {
     };
 }
 
+// We could have used u32 as the generated type here,
+// which would probably perform marginally better.
+// However, using u16 makes it much easier to test that
+// the Lemire algorithm is correct and the distribution uniform.
 range_from_rng! {u8, u8, u16}
 range_from_rng! {i8, u8, u16}
+
 range_from_rng! {u16, u16, u32}
 range_from_rng! {i16, u16, u32}
+
 range_from_rng! {u32, u32, u32}
 range_from_rng! {i32, u32, u32}
+
 range_from_rng! {u64, u64, u64}
 range_from_rng! {i64, u64, u64}
+
 range_from_rng! {u128, u128, u128}
 range_from_rng! {i128, u128, u128}
 
@@ -337,6 +347,9 @@ impl RangeFromRng for f32 {
         } = range.into();
         let span = end_inclusive - start;
 
+        // The simple algorith is just to generate an integer of the same size and convert it
+        // to a float while scaling it.  However, this does not utilize the full dynamic range
+        // of the mantissa when the integer is small.  The rand crate seems to do this.
         // An ideal algorithm should draw a real number, then round that to the nearest float
         // representation, in order to allow all possible float values to be possible outcomes.
         // This would be equivalent to drawing an int with virtually infinite size before
@@ -369,6 +382,9 @@ impl RangeFromRng for f64 {
         } = range.into();
         let span = end - start;
 
+        // The simple algorith is just to generate an integer of the same size and convert it
+        // to a float while scaling it.  However, this does not utilize the full dynamic range
+        // of the mantissa when the integer is small.  The rand crate seems to do this.
         // An ideal algorithm should draw a real number, then round that to the nearest float
         // representation, in order to allow all possible float values to be possible outcomes.
         // This would be equivalent to drawing an int with virtually infinite size before
