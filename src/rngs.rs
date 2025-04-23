@@ -489,6 +489,59 @@ mod tests {
         assert_eq!(0u8, rng.range(0u8..=0));
     }
 
+    struct CountingRng128 {
+        next: u128,
+        high: bool,
+    }
+
+    impl CountingRng128 {
+        fn new() -> Self {
+            // Start near the max to ensure that the uniformity tests
+            // hit the area where numbers must be discarded:
+            Self {
+                next: u128::MAX - 100,
+                high: true,
+            }
+        }
+    }
+
+    impl Rng for CountingRng128 {
+        fn random_u32(&mut self) -> u32 {
+            unimplemented!()
+        }
+
+        fn random_u64(&mut self) -> u64 {
+            let random = if self.high {
+                (self.next >> 64) as u64
+            } else {
+                let low = self.next as u64;
+                self.next = self.next.wrapping_add(1);
+                low
+            };
+            self.high = !self.high;
+            random
+        }
+    }
+
+    #[test]
+    fn test_range_u128_is_uniform() {
+        let mut rng = CountingRng128::new();
+        const START: u128 = 13;
+        const END: u128 = 42;
+        const LEN: usize = (END - START) as usize;
+        let mut count: [u8; LEN] = [0; LEN];
+        for _ in 0..100 * LEN {
+            let value = rng.range(START..END);
+            assert!(value >= START);
+            assert!(value < END);
+            let inx = (value - START) as usize;
+            count[inx] += 1;
+        }
+        for i in 0..LEN {
+            assert_eq!(count[0], count[i]);
+        }
+    }
+
     struct FloatRangeGenerator(u128);
 
     impl FloatRangeGenerator {
