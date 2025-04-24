@@ -4,6 +4,7 @@ extern crate core;
 mod devices;
 mod ranges;
 mod rngs;
+mod smallrng;
 mod xoshiro;
 
 #[cfg(all(unix, feature = "std"))]
@@ -12,14 +13,8 @@ pub use devices::DevUrandom;
 pub use devices::GetRandom;
 pub use devices::RandomDevice;
 pub use rngs::Rng;
+pub use smallrng::SmallRng;
 pub use xoshiro::Xoshiro256pp;
-
-/// This an alias to a numerically good PRNG if you need something small and fast
-/// but not cryptographically secure.
-/// The algorithm may change at any time, so if your
-/// code depends on the algorithm staying the same then you should
-/// use a specific algorithm instead.
-pub type SmallRng = Xoshiro256pp;
 
 /// This is the type alias for the default PRNG.
 /// It is currently not cryptographically secure, but if such an algorithm

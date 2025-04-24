@@ -2,8 +2,6 @@
 
 #[cfg(all(unix, feature = "std"))]
 pub use crate::devices::DevUrandom;
-use crate::ranges::GenerateRange;
-use crate::rngs::{RangeFromRng, ValueFromRng};
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
 use crate::{RandomDevice, Rng};
@@ -68,184 +66,9 @@ impl Xoshiro256pp {
         }
     }
 
-    /// Generates a single random integer
-    ///
-    /// # Arguments
-    ///
-    /// returns: A random integer
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let random_value : u32 = rng.random();
-    /// }
-    /// ```
-    #[inline]
-    pub fn random<T>(&mut self) -> T
-    where
-        T: ValueFromRng,
-        Self: Sized,
-    {
-        <Self as Rng>::random(self)
-    }
-
-    /// Generates a single random integer in a specified range.
-    /// The distribution is strictly uniform.
-    /// The following types are supported:
-    /// u8, u16, u64, u128, usize, i8, i16, i64, i128, isize, f32, f64
-    ///
-    /// Any kind of range is supported for integers, but only `Range` for floats.
-    ///
-    /// # Arguments
-    ///
-    /// * `range`: The range of the uniform distribution.
-    ///
-    /// returns: A random value in the range
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let random_value : u32 = rng.range(..42);
-    /// let float : f64 = rng.range::<f64>(1.0..42.0);
-    /// }
-    /// ```
-    #[inline]
-    pub fn range<T>(&mut self, range: impl Into<GenerateRange<T>>) -> T
-    where
-        T: RangeFromRng,
-        Self: Sized,
-    {
-        <Self as Rng>::range(self, range)
-    }
-
-    /// Provides an iterator that emits random values.
-    ///
-    /// returns: An iterator that outputs random values. Never None.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter<'a, T>(&'a mut self) -> impl Iterator<Item = T> + 'a
-    where
-        T: ValueFromRng + 'a,
-        Self: Sized,
-    {
-        <Self as Rng>::iter(self)
-    }
-
-    /// Provides an iterator that emits random u8 values.
-    /// Same as the generic variant, but more efficient.
-    ///
-    /// returns: An iterator that outputs random u8 values. Never None.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter_u8(&mut self) -> impl Iterator<Item = u8> + '_
-    where
-        Self: Sized,
-    {
-        <Self as Rng>::iter_u8(self)
-    }
-
-    /// Fills a mutable slice with random values.
-    ///
-    /// # Arguments
-    ///
-    /// * `destination`: The slice to fill
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let mut data = [0_usize; 4];
-    /// rng.fill(&mut data);
-    /// }
-    /// ```
-    #[inline]
-    pub fn fill<T>(&mut self, destination: &mut [T])
-    where
-        T: ValueFromRng,
-        Self: Sized,
-    {
-        <Self as Rng>::fill(self, destination);
-    }
-
-    /// Fills a mutable slice of u8 with random values.
-    /// Faster than `fill` for u8 values.
-    ///
-    /// # Arguments
-    ///
-    /// * `destination`: The slice to fill
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let mut data = [0_u8; 4];
-    /// rng.fill_u8(&mut data);
-    /// }
-    /// ```
-    #[inline]
-    pub fn fill_u8(&mut self, destination: &mut [u8])
-    where
-        Self: Sized,
-    {
-        <Self as Rng>::fill_u8(self, destination);
-    }
-
-    /// Shuffles the elements of a slice
-    ///
-    /// # Arguments
-    ///
-    /// * `target`: The slice to shuffle
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::Xoshiro256pp::new();
-    /// let mut numbers = vec![1, 2, 3, 4, 5];
-    /// rng.shuffle(&mut numbers);
-    /// }
-    /// ```
-    #[inline]
-    pub fn shuffle<T>(&mut self, target: &mut [T])
-    where
-        T: Clone,
-        Self: Sized,
-    {
-        <Self as Rng>::shuffle(self, target);
-    }
-
     // This is "next" from the C reference implementation
     #[inline]
-    pub fn next_random(&mut self) -> u64 {
+    fn next_random(&mut self) -> u64 {
         let result = (self.state[0].wrapping_add(self.state[3]))
             .rotate_left(23)
             .wrapping_add(self.state[0]);
@@ -308,6 +131,7 @@ impl SplitMix64 {
 #[cfg(test)]
 mod tests {
     use super::Xoshiro256pp;
+    use crate::rngs::Rng;
 
     struct DummyDevice;
 
