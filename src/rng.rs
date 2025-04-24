@@ -15,11 +15,11 @@ pub trait Rng {
     /// Used by other functions as input.
     fn random_u64(&mut self) -> u64;
 
-    /// Generates a single random integer
+    /// Generates a single random unsigned integer
     ///
     /// # Arguments
     ///
-    /// returns: A random integer
+    /// returns: A random unsigned integer
     ///
     #[inline]
     fn random<T>(&mut self) -> T
