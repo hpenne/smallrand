@@ -230,6 +230,7 @@ impl DefaultRng {
     }
 }
 
+#[cfg(feature = "std")]
 impl Default for DefaultRng {
     fn default() -> Self {
         Self::new()

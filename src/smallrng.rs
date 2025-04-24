@@ -229,6 +229,7 @@ impl SmallRng {
     }
 }
 
+#[cfg(feature = "std")]
 impl Default for SmallRng {
     fn default() -> Self {
         Self::new()
