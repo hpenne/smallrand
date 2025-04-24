@@ -4,7 +4,7 @@ extern crate core;
 mod defaultrng;
 mod devices;
 mod ranges;
-mod rngs;
+mod rng;
 mod smallrng;
 mod xoshiro;
 
@@ -14,6 +14,6 @@ pub use devices::DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
 pub use devices::GetRandom;
 pub use devices::RandomDevice;
-pub use rngs::Rng;
+pub use rng::Rng;
 pub use smallrng::SmallRng;
 pub use xoshiro::Xoshiro256pp;

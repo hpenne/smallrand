@@ -1,7 +1,7 @@
 use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
-use crate::rngs::Rng;
-use crate::rngs::{RangeFromRng, ValueFromRng};
+use crate::rng::Rng;
+use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
 
 /// This is the type alias for the default PRNG.

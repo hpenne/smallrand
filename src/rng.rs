@@ -410,7 +410,7 @@ impl RangeFromRng for f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::rngs::Rng;
+    use crate::rng::Rng;
 
     struct CountingRng(pub u64);
 

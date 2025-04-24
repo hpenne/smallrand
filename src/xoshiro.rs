@@ -131,7 +131,7 @@ impl SplitMix64 {
 #[cfg(test)]
 mod tests {
     use super::Xoshiro256pp;
-    use crate::rngs::Rng;
+    use crate::rng::Rng;
 
     struct DummyDevice;
 

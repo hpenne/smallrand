@@ -1,7 +1,7 @@
 use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
-use crate::rngs::Rng;
-use crate::rngs::{RangeFromRng, ValueFromRng};
+use crate::rng::Rng;
+use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
 
 /// This is a numerically good PRNG if you need something small and fast
