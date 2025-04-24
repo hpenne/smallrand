@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
 
@@ -410,7 +411,7 @@ impl RangeFromRng for f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::rngs::Rng;
+    use crate::rng::Rng;
 
     struct CountingRng(pub u64);
 
