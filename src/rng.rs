@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
 
