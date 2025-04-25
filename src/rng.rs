@@ -109,7 +109,7 @@ pub trait Rng {
     where
         Self: Sized,
     {
-        let mut blocks = destination.chunks_exact_mut(size_of::<u64>());
+        let mut blocks = destination.chunks_exact_mut(core::mem::size_of::<u64>());
         for block in blocks.by_ref() {
             block.copy_from_slice(&self.random_u64().to_ne_bytes());
         }

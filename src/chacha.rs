@@ -6,6 +6,7 @@ use crate::devices::DevUrandom;
 use crate::GetRandom;
 use crate::{RandomDevice, Rng};
 use chacha::KeyStream;
+#[cfg(feature = "std")]
 use std::time::SystemTime;
 
 #[allow(clippy::module_name_repetitions)]
