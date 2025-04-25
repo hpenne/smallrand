@@ -24,7 +24,7 @@ impl ChaCha8 {
         #[cfg(unix)]
         let rng = Self::from_device(&mut DevUrandom::new(), nonce);
         #[cfg(not(unix))]
-        let rng = Self::from_device(&mut GetRandom::new(), &nonce);
+        let rng = Self::from_device(&mut GetRandom::new(), nonce);
         rng
     }
 
