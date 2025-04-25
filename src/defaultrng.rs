@@ -1,8 +1,10 @@
+#![forbid(unsafe_code)]
+
+use crate::chacha::ChaCha8;
 use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
-use crate::xoshiro::Xoshiro256pp;
 
 /// This is the type alias for the default PRNG.
 /// It is currently not cryptographically secure, but if such an algorithm
@@ -12,7 +14,7 @@ use crate::xoshiro::Xoshiro256pp;
 /// use a specific algorithm instead.
 pub struct DefaultRng(Impl);
 
-type Impl = Xoshiro256pp;
+type Impl = ChaCha8;
 
 impl Rng for DefaultRng {
     #[inline]
@@ -45,13 +47,15 @@ impl DefaultRng {
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
+    /// * `nonce`: A "number used once" used for initalization in addition to the seed.
+    ///            A high resolution clock or global counter works well for this.
     ///
     /// returns: `DefaultRng`
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    pub fn from_device<T>(random_device: &mut T, nonce: [u8; 8]) -> Self
     where
         T: RandomDevice,
     {
-        Self(Impl::from_device(random_device))
+        Self(Impl::from_device(random_device, nonce))
     }
 
     /// Generates a single random integer

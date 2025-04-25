@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 extern crate core;
 
+mod chacha;
 mod defaultrng;
 mod devices;
 mod ranges;

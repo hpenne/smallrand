@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
 
@@ -7,6 +6,7 @@ use crate::ranges::GenerateRange;
 /// It declares two functions that PRNGs must implement (to generate u32 and u64 random values),
 /// and based on these provides implementations of all the other
 /// functions supported by the crate.
+#[allow(clippy::module_name_repetitions)]
 pub trait Rng {
     /// Generates a random u32.
     /// Used by other functions as input.
@@ -109,14 +109,14 @@ pub trait Rng {
     where
         Self: Sized,
     {
-        let mut blocks = destination.chunks_exact_mut(core::mem::size_of::<u64>());
+        let mut blocks = destination.chunks_exact_mut(size_of::<u64>());
         for block in blocks.by_ref() {
             block.copy_from_slice(&self.random_u64().to_ne_bytes());
         }
         let bytes_remaining = blocks.into_remainder();
         if !bytes_remaining.is_empty() {
             bytes_remaining
-                .copy_from_slice(&self.random::<u64>().to_ne_bytes()[..bytes_remaining.len()]);
+                .copy_from_slice(&self.random::<u64>().to_be_bytes()[..bytes_remaining.len()]);
         }
     }
 

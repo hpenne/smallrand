@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
