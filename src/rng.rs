@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
 
@@ -6,7 +7,6 @@ use crate::ranges::GenerateRange;
 /// It declares two functions that PRNGs must implement (to generate u32 and u64 random values),
 /// and based on these provides implementations of all the other
 /// functions supported by the crate.
-#[allow(clippy::module_name_repetitions)]
 pub trait Rng {
     /// Generates a random u32.
     /// Used by other functions as input.
