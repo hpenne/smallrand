@@ -47,8 +47,7 @@ impl DefaultRng {
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
-    /// * `nonce`: A "number used once" used for initalization in addition to the seed.
-    ///            A high resolution clock or global counter works well for this.
+    /// * `nonce`: A "number used once" used for initalization in addition to the seed. A high resolution clock or global counter works well for this.
     ///
     /// returns: `DefaultRng`
     pub fn from_device<T>(random_device: &mut T, nonce: [u8; 8]) -> Self
