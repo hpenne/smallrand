@@ -1,20 +1,19 @@
 #![forbid(unsafe_code)]
 
-use crate::chacha::ChaCha8;
+use crate::chacha::ChaCha12;
 use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 
 /// This is the type alias for the default PRNG.
-/// It is currently not cryptographically secure, but if such an algorithm
-/// is added later, it will be used as the `DefaultRng`.
+/// The PRNG currently used is `ChaCha12`.
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm staying the same then you should
 /// use a specific algorithm instead.
 pub struct DefaultRng(Impl);
 
-type Impl = ChaCha8;
+type Impl = ChaCha12;
 
 impl Rng for DefaultRng {
     #[inline]
@@ -47,14 +46,13 @@ impl DefaultRng {
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
-    /// * `nonce`: A "number used once" used for initalization in addition to the seed. A high resolution clock or global counter works well for this.
     ///
     /// returns: `DefaultRng`
-    pub fn from_device<T>(random_device: &mut T, nonce: [u8; 8]) -> Self
+    pub fn from_device<T>(random_device: &mut T) -> Self
     where
         T: RandomDevice,
     {
-        Self(Impl::from_device(random_device, nonce))
+        Self(Impl::from_device(random_device))
     }
 
     /// Generates a single random integer

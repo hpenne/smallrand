@@ -116,7 +116,7 @@ pub trait Rng {
         let bytes_remaining = blocks.into_remainder();
         if !bytes_remaining.is_empty() {
             bytes_remaining
-                .copy_from_slice(&self.random::<u64>().to_be_bytes()[..bytes_remaining.len()]);
+                .copy_from_slice(&self.random::<u64>().to_ne_bytes()[..bytes_remaining.len()]);
         }
     }
 

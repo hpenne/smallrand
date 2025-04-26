@@ -292,7 +292,7 @@ mod tests {
         let mut rng = xoshiro();
         let mut data = [0_u8; 4];
         rng.fill_u8(&mut data);
-        assert_eq!(&vec![87, 89, 91, 93], &data);
+        assert_eq!(&vec![93, 91, 89, 95], &data);
     }
 
     #[test]
