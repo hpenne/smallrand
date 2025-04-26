@@ -14,12 +14,15 @@
 //! Quick start
 //!
 //! ```
+//! #[cfg(feature = "std")]
+//! {
 //! use smallrand::StdRng;
 //! let mut rng = StdRng::new();
 //! let coin_flip : bool = rng.random();
 //! let some_int = rng.random::<u32>();
 //! let uniformly_distributed : u32 = rng.range(0..=42);
 //! let a_float : f64 = rng.range(0.0..42.0);
+//! }
 //! ```
 #![forbid(unsafe_code)]
 extern crate core;
