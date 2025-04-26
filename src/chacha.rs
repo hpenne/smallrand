@@ -69,8 +69,9 @@ impl ChaCha12 {
     ///
     /// returns: `ChaCha12`
     ///
+    #[must_use]
     pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
-        Self(ChaCha::<12>::new(&seed, nonce))
+        Self(ChaCha::<12>::new(seed, nonce))
     }
 
     #[cfg(feature = "std")]
