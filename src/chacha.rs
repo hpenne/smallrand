@@ -40,7 +40,7 @@ impl ChaCha12 {
         rng
     }
 
-    /// Creates a new `ChaCha12` random generator using seeds from a `RandomDevice`.
+    /// Creates a new `ChaCha12` random generator using a seed from a `RandomDevice`.
     /// The nonce is taken from the nanoseconds part of `SystemTime` when
     /// building with `std` enabled, to provide an extra safety net in case the random
     /// device is broken.
@@ -58,6 +58,19 @@ impl ChaCha12 {
     {
         let seed = random_device.seed_bytes();
         Self(ChaCha::<12>::new(&seed, Self::nonce()))
+    }
+
+    /// Creates a new `ChaCha12` random generator from a specified seed and nonce.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed`: The seed (i.e. key) to initialize with
+    /// * `nonce`: The nonce to initialize with
+    ///
+    /// returns: `ChaCha12`
+    ///
+    pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
+        Self(ChaCha::<12>::new(&seed, nonce))
     }
 
     #[cfg(feature = "std")]

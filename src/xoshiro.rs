@@ -108,7 +108,7 @@ impl Rng for Xoshiro256pp {
     }
 }
 
-/// This is the `SplitMax` algorithm from <https://prng.di.unimi.it/splitmix64.c>
+/// This is the `SplitMix` algorithm from <https://prng.di.unimi.it/splitmix64.c>
 /// It is used here to generate more seed bytes from a 64 bit value.
 pub struct SplitMix64 {
     state: u64,

@@ -6,8 +6,10 @@ smallrand
 
 Random number generation with absolutely minimal dependencies and no unsafe code.
 
-This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the "xoshiro256++"
-algorithm (<https://prng.di.unimi.it>), which is the one used by `rand` for its `SmallRng`.
+This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the "
+xoshiro256++" (<https://prng.di.unimi.it>) and "ChaCha12"
+algorithms (https://cr.yp.to/chacha.html), which are also the ones used by `rand` for its `SmallRng` and `DefaultRng`,
+respectively.
 
 The crate is intended to be easy to audit. Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and
 that is only used on non-Linux/Unix platforms. It can also be built as no-std, in which case `getrandom` is not used at
@@ -29,34 +31,27 @@ FAQ
 ---
 
 * Where does the seed come from?
-    - The seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for others.
-* Why is there no CSPRNG?
-    - First, don't implement crypto yourself. If you think doing that is a good idea, then you probably don't know the
-      subject
-      well enough.
-    - If you have reached the level where you are competent enough to know you should not, and have then gone beyond
-      that and think you can actaully to it, then you probably know enough to not trust other people's RNGs and will
-      want implement the CSPRNG yourself.
+    - The seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for others. You
+      can also write your own `RandomDevice` and use that to provide the seed.
+* Is the DefaultRng cryptographically secure?
+    - The `DefaultRng` uses the ChaCha12 crypto algorithm. This algorithm is currently unbroken and can be used to
+      implement cryptographically secure random generators, but please note that no guarantees of any kind are made that
+      this particular implementation is cryptographically secure.
 * How fast is this compared to `rand`?
-    - `smallrand` has been benchmarked against the same algorithm from the `rand` crate (`SmallRng`/Xoshiro256++) using
+    - `SmallRng` from `smallrand` has been benchmarked against the `rand` crate (`SmallRng`/Xoshiro256++) using
       `criterion`. On my Apple M1, `smallrand` is equal in performance when generating u64 values, more than twice as
       fast generating uniformly distributed ranges
       of u64 values, and approximately 10% faster when filling a slice of bytes with random data. `rand` is 7% faster at
       generating ranges of f64 values, which could be caused by `rand` using a simpler algorithm that does not use the
       available dynamic range of the mantissa when the generated value is close to zero.
 * Why would I choose this over `rand`?
-    - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`, which
-      contains a
+    - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`, which contains a
       huge amount of unsafe code.
     - Its API encourages you to use thread local RNG instances. This creates unnecessary (thread) global state, which is
       almost always a bad idea. Since it is thread local, you also get one RNG per thread in the thread pool if your
-      code is
-      async. Furthermore, it is a potential security risk (see [below](#the-juniper-incident)).
+      code is async.
     - Unlike `rand`, this crate does not require you to import any traits or anything else beyond the RNG you're using.
     - This crate has minimal dependencies and does not intend to change much, so you won't have to update it very often.
     - This crate compiles faster than `rand` due to it smaller size and minimal dependencies.
 * Why would I choose this over `fastrand`?
-    - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++.
-
-## The Juniper incident
-
+    - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as ChaCha12 and Xoshiro256++.
