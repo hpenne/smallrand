@@ -19,8 +19,8 @@ Quick start
 -----
 
 ```rust
-use smallrand::DefaultRng;
-let mut rng = DefaultRng::new();
+use smallrand::StdRng;
+let mut rng = StdRng::new();
 let coin_flip : bool = rng.random();
 let some_int = rng.random::<u32>();
 let uniformly_distributed : u32 = rng.range(0..=42);

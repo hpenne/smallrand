@@ -6,8 +6,9 @@ use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 
-/// This is the type alias for the default PRNG.
-/// The PRNG currently used is `ChaCha12`, which is based on the
+/// This is the default random generator. It has more state than `SmallRng`
+/// and is slower, but it has much better security properties.
+/// The PRNG algorithm currently used is `ChaCha12`, which is based on the
 /// chacha crypto algorithm with 12 rounds.
 ///
 /// This crypto algorithm is currently unbroken and can be used to implement
