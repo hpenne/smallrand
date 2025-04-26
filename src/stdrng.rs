@@ -21,11 +21,11 @@ use crate::rng::{RangeFromRng, ValueFromRng};
 ///
 /// Note that chacha is limited to generating 2^64 blocks (2^70 bytes).
 /// The algorithm will panic if this limit is exceeded.
-pub struct DefaultRng(Impl);
+pub struct StdRng(Impl);
 
 type Impl = ChaCha12;
 
-impl Rng for DefaultRng {
+impl Rng for StdRng {
     #[inline]
     fn random_u32(&mut self) -> u32 {
         self.0.random_u32()
@@ -37,14 +37,14 @@ impl Rng for DefaultRng {
     }
 }
 
-impl DefaultRng {
+impl StdRng {
     /// Creates a new random generator with a seed from a random device.
     ///
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
     ///
-    /// returns: `DefaultRng`
+    /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
@@ -57,7 +57,7 @@ impl DefaultRng {
     ///
     /// * `random_device`: The device to get the seed from
     ///
-    /// returns: `DefaultRng`
+    /// returns: `StdRng`
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
         T: RandomDevice,
@@ -76,7 +76,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_value : u32 = rng.random();
     /// }
     /// ```
@@ -107,7 +107,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_value : u32 = rng.range(..42);
     /// let float : f64 = rng.range::<f64>(1.0..42.0);
     /// }
@@ -130,7 +130,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
     /// }
     /// ```
@@ -153,7 +153,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
     /// }
     /// ```
@@ -176,7 +176,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let mut data = [0_usize; 4];
     /// rng.fill(&mut data);
     /// }
@@ -202,7 +202,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let mut data = [0_u8; 4];
     /// rng.fill_u8(&mut data);
     /// }
@@ -226,7 +226,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let mut numbers = vec![1, 2, 3, 4, 5];
     /// rng.shuffle(&mut numbers);
     /// }
@@ -242,7 +242,7 @@ impl DefaultRng {
 }
 
 #[cfg(feature = "std")]
-impl Default for DefaultRng {
+impl Default for StdRng {
     fn default() -> Self {
         Self::new()
     }

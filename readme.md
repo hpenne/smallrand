@@ -8,7 +8,7 @@ Random number generation with absolutely minimal dependencies and no unsafe code
 
 This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the "
 xoshiro256++" (<https://prng.di.unimi.it>) and "ChaCha12"
-algorithms (https://cr.yp.to/chacha.html), which are also the ones used by `rand` for its `SmallRng` and `DefaultRng`,
+algorithms (https://cr.yp.to/chacha.html), which are also the ones used by `rand` for its `SmallRng` and `StdRng`,
 respectively.
 
 The crate is intended to be easy to audit. Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and
@@ -42,8 +42,10 @@ FAQ
       `criterion`. On my Apple M1, `smallrand` is equal in performance when generating u64 values, more than twice as
       fast generating uniformly distributed ranges
       of u64 values, and approximately 10% faster when filling a slice of bytes with random data. `rand` is 7% faster at
-      generating ranges of f64 values, which could be caused by `rand` using a simpler algorithm that does not use the
-      available dynamic range of the mantissa when the generated value is close to zero.
+      generating ranges of f64 values, which could be caused by `rand` using a slightly simpler algorithm which does not
+      use the full available dynamic range of the mantissa when the generated value is close to zero.
+    - `StdRng` from `smallrand` has been similarly benchmarked, and was approximately 4% faster than the same algorithm
+      from `rand` when generating u64 values.
 * Why would I choose this over `rand`?
     - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`, which contains a
       huge amount of unsafe code.
@@ -55,3 +57,4 @@ FAQ
     - This crate compiles faster than `rand` due to it smaller size and minimal dependencies.
 * Why would I choose this over `fastrand`?
     - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as ChaCha12 and Xoshiro256++.
+    - Just like `rand` its API encourages you to use thread local RNG instances.
