@@ -1,0 +1,346 @@
+#![forbid(unsafe_code)]
+#![allow(clippy::inline_always)]
+
+#[cfg(all(unix, feature = "std"))]
+use crate::devices::DevUrandom;
+#[cfg(all(not(unix), feature = "std"))]
+use crate::GetRandom;
+use crate::{RandomDevice, Rng};
+use std::ops::BitXor;
+
+#[allow(clippy::doc_markdown)]
+/// This is a random generator based on the ChaCha crypto algorithm with 12 rounds.
+///
+/// This algorithm is currently unbroken and can be used to implement
+/// cryptographically secure random generators, but please note
+/// that no guarantees of any kind are made that this particular implementation
+/// is cryptographically secure.
+///
+/// Note that ChaCha is limited to generating 2^64 blocks (2^70 bytes).
+/// The algorithm will panic if this limit is exceeded.
+#[allow(clippy::module_name_repetitions)]
+pub struct ChaCha12(ChaCha<12>);
+
+impl ChaCha12 {
+    /// Creates a new `ChaCha12` random generator.
+    /// The nonce is taken from the nanoseconds part of `SystemTime` when
+    /// building with `std` enabled, to provide an extra safety net in case the random
+    /// device is broken.
+    /// For non-std builds, the nonce is 0 (which is what `rand` always does).
+    ///
+    /// returns: `ChaCha12`
+    ///
+    #[cfg(feature = "std")]
+    #[must_use]
+    pub fn new() -> Self {
+        #[cfg(unix)]
+        let rng = Self::from_device(&mut DevUrandom::new());
+        #[cfg(not(unix))]
+        let rng = Self::from_device(&mut GetRandom::new());
+        rng
+    }
+
+    /// Creates a new `ChaCha12` random generator using a seed from a `RandomDevice`.
+    /// The nonce is taken from the nanoseconds part of `SystemTime` when
+    /// building with `std` enabled, to provide an extra safety net in case the random
+    /// device is broken.
+    /// For non-std builds, the nonce is 0 (which is what `rand` always does).
+    ///
+    /// # Arguments
+    ///
+    /// * `random_device`: The source of the seed
+    ///
+    /// returns: `ChaCha12`
+    ///
+    pub fn from_device<T>(random_device: &mut T) -> Self
+    where
+        T: RandomDevice,
+    {
+        let seed = random_device.seed_bytes();
+        Self(ChaCha::<12>::new(&seed, Self::nonce()))
+    }
+
+    /// Creates a new `ChaCha12` random generator from a specified seed and nonce.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed`: The seed (i.e. key) to initialize with
+    /// * `nonce`: The nonce to initialize with
+    ///
+    /// returns: `ChaCha12`
+    ///
+    #[must_use]
+    pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
+        Self(ChaCha::<12>::new(seed, nonce))
+    }
+
+    #[cfg(feature = "std")]
+    fn nonce() -> [u8; 8] {
+        let duration_since_epoch = std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap();
+        #[allow(clippy::cast_possible_truncation)]
+        (duration_since_epoch.as_nanos() as u64).to_ne_bytes()
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn nonce() -> [u8; 8] {
+        [0; 8]
+    }
+}
+
+#[cfg(feature = "std")]
+impl Default for ChaCha12 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Rng for ChaCha12 {
+    #[inline(always)]
+    fn random_u32(&mut self) -> u32 {
+        self.0.random_u32()
+    }
+
+    #[inline(always)]
+    fn random_u64(&mut self) -> u64 {
+        self.0.random_u64()
+    }
+
+    #[inline(always)]
+    fn fill_u8(&mut self, destination: &mut [u8]) {
+        self.0.fill_u8(destination);
+    }
+}
+
+struct ChaCha<const ROUNDS: usize> {
+    state: [u32; 16],
+    inx: usize,
+    buffer: [u8; 64],
+}
+
+impl<const ROUNDS: usize> ChaCha<ROUNDS> {
+    fn new(key: &[u8; 32], nonce: [u8; 8]) -> Self {
+        const SIGMA: &[u8; 16] = b"expand 32-byte k";
+        let mut s = Self {
+            state: [
+                u32::from_le_bytes(SIGMA[0..4].try_into().unwrap()),
+                u32::from_le_bytes(SIGMA[4..8].try_into().unwrap()),
+                u32::from_le_bytes(SIGMA[8..12].try_into().unwrap()),
+                u32::from_le_bytes(SIGMA[12..16].try_into().unwrap()),
+                u32::from_le_bytes(key[0..4].try_into().unwrap()),
+                u32::from_le_bytes(key[4..8].try_into().unwrap()),
+                u32::from_le_bytes(key[8..12].try_into().unwrap()),
+                u32::from_le_bytes(key[12..16].try_into().unwrap()),
+                u32::from_le_bytes(key[16..20].try_into().unwrap()),
+                u32::from_le_bytes(key[20..24].try_into().unwrap()),
+                u32::from_le_bytes(key[24..28].try_into().unwrap()),
+                u32::from_le_bytes(key[28..32].try_into().unwrap()),
+                0,
+                0,
+                u32::from_le_bytes(nonce[0..4].try_into().unwrap()),
+                u32::from_le_bytes(nonce[4..8].try_into().unwrap()),
+            ],
+            inx: 0,
+            buffer: [0; 64],
+        };
+        s.generate_block();
+        s
+    }
+
+    #[inline]
+    fn generate_block(&mut self) {
+        let mut x = [0_u32; 16];
+        x.copy_from_slice(&self.state);
+        for _round in (0..ROUNDS).step_by(2) {
+            Self::quarter_round(&mut x, 0, 4, 8, 12);
+            Self::quarter_round(&mut x, 1, 5, 9, 13);
+            Self::quarter_round(&mut x, 2, 6, 10, 14);
+            Self::quarter_round(&mut x, 3, 7, 11, 15);
+            Self::quarter_round(&mut x, 0, 5, 10, 15);
+            Self::quarter_round(&mut x, 1, 6, 11, 12);
+            Self::quarter_round(&mut x, 2, 7, 8, 13);
+            Self::quarter_round(&mut x, 3, 4, 9, 14);
+        }
+        for (i, element) in x.iter_mut().enumerate() {
+            *element = element.wrapping_add(self.state[i]);
+        }
+        let mut blocks = self.buffer.chunks_exact_mut(core::mem::size_of::<u32>());
+        for (i, block) in blocks.by_ref().enumerate() {
+            block.copy_from_slice(&x[i].to_le_bytes());
+        }
+        self.state[12] = self.state[12].wrapping_add(1);
+        if self.state[12] == 0 {
+            self.state[13] = self.state[13].wrapping_add(1);
+            assert_ne!(0, self.state[13], "Max number of bytes exceeded");
+        }
+    }
+
+    #[allow(clippy::many_single_char_names)]
+    #[inline(always)]
+    fn quarter_round(x: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) {
+        x[a] = x[a].wrapping_add(x[b]);
+        x[d] = x[d].bitxor(x[a]).rotate_left(16);
+        x[c] = x[c].wrapping_add(x[d]);
+        x[b] = x[b].bitxor(x[c]).rotate_left(12);
+        x[a] = x[a].wrapping_add(x[b]);
+        x[d] = x[d].bitxor(x[a]).rotate_left(8);
+        x[c] = x[c].wrapping_add(x[d]);
+        x[b] = x[b].bitxor(x[c]).rotate_left(7);
+    }
+}
+
+impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
+    fn random_u32(&mut self) -> u32 {
+        const SIZE: usize = core::mem::size_of::<u32>();
+        if self.inx + SIZE > self.buffer.len() {
+            self.generate_block();
+            self.inx = 0;
+        }
+        let value = u32::from_le_bytes(self.buffer[self.inx..self.inx + SIZE].try_into().unwrap());
+        self.inx += SIZE;
+        value
+    }
+
+    fn random_u64(&mut self) -> u64 {
+        const SIZE: usize = core::mem::size_of::<u64>();
+        if self.inx + SIZE > self.buffer.len() {
+            self.generate_block();
+            self.inx = 0;
+        }
+        let value = u64::from_le_bytes(self.buffer[self.inx..self.inx + SIZE].try_into().unwrap());
+        self.inx += SIZE;
+        value
+    }
+
+    fn fill_u8(&mut self, destination: &mut [u8])
+    where
+        Self: Sized,
+    {
+        for element in destination.iter_mut() {
+            if self.inx == self.buffer.len() {
+                self.generate_block();
+                self.inx = 0;
+            }
+            *element = self.buffer[self.inx];
+            self.inx += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn chacha8_byte_output() {
+        let mut rng = ChaCha::<8>::new(
+            &[
+                0x64, 0x1a, 0xea, 0xeb, 0x08, 0x03, 0x6b, 0x61, 0x7a, 0x42, 0xcf, 0x14, 0xe8, 0xc5,
+                0xd2, 0xd1, 0x15, 0xf8, 0xd7, 0xcb, 0x6e, 0xa5, 0xe2, 0x8b, 0x9b, 0xfa, 0xf8, 0x3e,
+                0x03, 0x84, 0x26, 0xa7,
+            ],
+            [0xa1, 0x4a, 0x11, 0x68, 0x27, 0x1d, 0x45, 0x9b],
+        );
+
+        let mut output = [0u8; 96];
+        rng.fill_u8(&mut output);
+
+        assert_eq!(
+            output,
+            [
+                0x17, 0x21, 0xc0, 0x44, 0xa8, 0xa6, 0x45, 0x35, 0x22, 0xdd, 0xdb, 0x31, 0x43, 0xd0,
+                0xbe, 0x35, 0x12, 0x63, 0x3c, 0xa3, 0xc7, 0x9b, 0xf8, 0xcc, 0xc3, 0x59, 0x4c, 0xb2,
+                0xc2, 0xf3, 0x10, 0xf7, 0xbd, 0x54, 0x4f, 0x55, 0xce, 0x0d, 0xb3, 0x81, 0x23, 0x41,
+                0x2d, 0x6c, 0x45, 0x20, 0x7d, 0x5c, 0xf9, 0xaf, 0x0c, 0x6c, 0x68, 0x0c, 0xce, 0x1f,
+                0x7e, 0x43, 0x38, 0x8d, 0x1b, 0x03, 0x46, 0xb7, 0x13, 0x3c, 0x59, 0xfd, 0x6a, 0xf4,
+                0xa5, 0xa5, 0x68, 0xaa, 0x33, 0x4c, 0xcd, 0xc3, 0x8a, 0xf5, 0xac, 0xe2, 0x01, 0xdf,
+                0x84, 0xd0, 0xa3, 0xca, 0x22, 0x54, 0x94, 0xca, 0x62, 0x09, 0x34, 0x5f,
+            ]
+        );
+    }
+
+    #[test]
+    fn chacha12_byte_output() {
+        let mut rng = ChaCha::<12>::new(
+            &[
+                0x27, 0xfc, 0x12, 0x0b, 0x01, 0x3b, 0x82, 0x9f, 0x1f, 0xae, 0xef, 0xd1, 0xab, 0x41,
+                0x7e, 0x86, 0x62, 0xf4, 0x3e, 0x0d, 0x73, 0xf9, 0x8d, 0xe8, 0x66, 0xe3, 0x46, 0x35,
+                0x31, 0x80, 0xfd, 0xb7,
+            ],
+            [0xdb, 0x4b, 0x4a, 0x41, 0xd8, 0xdf, 0x18, 0xaa],
+        );
+
+        let mut output = [0u8; 96];
+        rng.fill_u8(&mut output);
+
+        assert_eq!(
+            output,
+            [
+                0x5f, 0x3c, 0x8c, 0x19, 0x0a, 0x78, 0xab, 0x7f, 0xe8, 0x08, 0xca, 0xe9, 0xcb, 0xcb,
+                0x0a, 0x98, 0x37, 0xc8, 0x93, 0x49, 0x2d, 0x96, 0x3a, 0x1c, 0x2e, 0xda, 0x6c, 0x15,
+                0x58, 0xb0, 0x2c, 0x83, 0xfc, 0x02, 0xa4, 0x4c, 0xbb, 0xb7, 0xe6, 0x20, 0x4d, 0x51,
+                0xd1, 0xc2, 0x43, 0x0e, 0x9c, 0x0b, 0x58, 0xf2, 0x93, 0x7b, 0xf5, 0x93, 0x84, 0x0c,
+                0x85, 0x0b, 0xda, 0x90, 0x51, 0xa1, 0xf0, 0x51, 0xdd, 0xf0, 0x9d, 0x2a, 0x03, 0xeb,
+                0xf0, 0x9f, 0x01, 0xbd, 0xba, 0x9d, 0xa0, 0xb6, 0xda, 0x79, 0x1b, 0x2e, 0x64, 0x56,
+                0x41, 0x04, 0x7d, 0x11, 0xeb, 0xf8, 0x50, 0x87, 0xd4, 0xde, 0x5c, 0x01,
+            ]
+        );
+    }
+
+    #[test]
+    fn chacha12_u32_output() {
+        let mut rng = ChaCha::<12>::new(
+            &[
+                0x27, 0xfc, 0x12, 0x0b, 0x01, 0x3b, 0x82, 0x9f, 0x1f, 0xae, 0xef, 0xd1, 0xab, 0x41,
+                0x7e, 0x86, 0x62, 0xf4, 0x3e, 0x0d, 0x73, 0xf9, 0x8d, 0xe8, 0x66, 0xe3, 0x46, 0x35,
+                0x31, 0x80, 0xfd, 0xb7,
+            ],
+            [0xdb, 0x4b, 0x4a, 0x41, 0xd8, 0xdf, 0x18, 0xaa],
+        );
+
+        let output: [u32; 24] = core::array::from_fn(|_| rng.random_u32());
+
+        assert_eq!(
+            output,
+            [
+                0x198c3c5f, 0x7fab780a, 0xe9ca08e8, 0x980acbcb, 0x4993c837, 0x1c3a962d, 0x156cda2e,
+                0x832cb058, 0x4ca402fc, 0x20e6b7bb, 0xc2d1514d, 0x0b9c0e43, 0x7b93f258, 0x0c8493f5,
+                0x90da0b85, 0x51f0a151, 0x2a9df0dd, 0x9ff0eb03, 0x9dbabd01, 0x79dab6a0, 0x56642e1b,
+                0x117d0441, 0x8750f8eb, 0x015cded4,
+            ]
+        );
+    }
+
+    #[test]
+    fn chacha12_u64_output() {
+        let mut rng = ChaCha::<12>::new(
+            &[
+                0x27, 0xfc, 0x12, 0x0b, 0x01, 0x3b, 0x82, 0x9f, 0x1f, 0xae, 0xef, 0xd1, 0xab, 0x41,
+                0x7e, 0x86, 0x62, 0xf4, 0x3e, 0x0d, 0x73, 0xf9, 0x8d, 0xe8, 0x66, 0xe3, 0x46, 0x35,
+                0x31, 0x80, 0xfd, 0xb7,
+            ],
+            [0xdb, 0x4b, 0x4a, 0x41, 0xd8, 0xdf, 0x18, 0xaa],
+        );
+
+        let output: [u64; 12] = core::array::from_fn(|_| rng.random_u64());
+
+        assert_eq!(
+            output,
+            [
+                0x7fab780a198c3c5f,
+                0x980acbcbe9ca08e8,
+                0x1c3a962d4993c837,
+                0x832cb058156cda2e,
+                0x20e6b7bb4ca402fc,
+                0x0b9c0e43c2d1514d,
+                0x0c8493f57b93f258,
+                0x51f0a15190da0b85,
+                0x9ff0eb032a9df0dd,
+                0x79dab6a09dbabd01,
+                0x117d044156642e1b,
+                0x015cded48750f8eb,
+            ]
+        );
+    }
+}

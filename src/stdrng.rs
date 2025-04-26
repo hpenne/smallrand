@@ -1,20 +1,32 @@
+#![forbid(unsafe_code)]
+
+use crate::chacha::ChaCha12;
 use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
-use crate::xoshiro::Xoshiro256pp;
 
-/// This is the type alias for the default PRNG.
-/// It is currently not cryptographically secure, but if such an algorithm
-/// is added later, it will be used as the `DefaultRng`.
+/// This is the default random generator. It has more state than `SmallRng`
+/// and is slower, but it has much better security properties.
+/// The PRNG algorithm currently used is `ChaCha12`, which is based on the
+/// chacha crypto algorithm with 12 rounds.
+///
+/// This crypto algorithm is currently unbroken and can be used to implement
+/// cryptographically secure random generators, but please note
+/// that no guarantees of any kind are made that this particular implementation
+/// is cryptographically secure.
+///
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm staying the same then you should
 /// use a specific algorithm instead.
-pub struct DefaultRng(Impl);
+///
+/// Note that chacha is limited to generating 2^64 blocks (2^70 bytes).
+/// The algorithm will panic if this limit is exceeded.
+pub struct StdRng(Impl);
 
-type Impl = Xoshiro256pp;
+type Impl = ChaCha12;
 
-impl Rng for DefaultRng {
+impl Rng for StdRng {
     #[inline]
     fn random_u32(&mut self) -> u32 {
         self.0.random_u32()
@@ -26,14 +38,14 @@ impl Rng for DefaultRng {
     }
 }
 
-impl DefaultRng {
+impl StdRng {
     /// Creates a new random generator with a seed from a random device.
     ///
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
     ///
-    /// returns: `DefaultRng`
+    /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
@@ -46,7 +58,7 @@ impl DefaultRng {
     ///
     /// * `random_device`: The device to get the seed from
     ///
-    /// returns: `DefaultRng`
+    /// returns: `StdRng`
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
         T: RandomDevice,
@@ -65,7 +77,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_value : u32 = rng.random();
     /// }
     /// ```
@@ -96,7 +108,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_value : u32 = rng.range(..42);
     /// let float : f64 = rng.range::<f64>(1.0..42.0);
     /// }
@@ -119,7 +131,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_values = rng.iter().take(10).collect::<Vec<u32>>();
     /// }
     /// ```
@@ -142,7 +154,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
     /// }
     /// ```
@@ -165,7 +177,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let mut data = [0_usize; 4];
     /// rng.fill(&mut data);
     /// }
@@ -191,7 +203,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let mut data = [0_u8; 4];
     /// rng.fill_u8(&mut data);
     /// }
@@ -215,7 +227,7 @@ impl DefaultRng {
     /// ```
     /// #[cfg(feature = "std")]
     /// {
-    /// let mut rng = smallrand::DefaultRng::new();
+    /// let mut rng = smallrand::StdRng::new();
     /// let mut numbers = vec![1, 2, 3, 4, 5];
     /// rng.shuffle(&mut numbers);
     /// }
@@ -231,7 +243,7 @@ impl DefaultRng {
 }
 
 #[cfg(feature = "std")]
-impl Default for DefaultRng {
+impl Default for StdRng {
     fn default() -> Self {
         Self::new()
     }

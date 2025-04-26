@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use core::ops::{Bound, Range, RangeBounds};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

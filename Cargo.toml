@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT-0"
+readme = "readme.md"
+repository = "https://github.com/hpenne/smallrand"
+description = """
+Random number generation with absolutely minimal dependencies and no unsafe code.
+"""
+keywords = ["random", "rng", "rand"]
 
 [features]
 default = ["std"]
