@@ -1,5 +1,6 @@
+#![allow(clippy::doc_markdown)]
 //! This crate provides a lightweight alternative to rand,
-//! using the " xoshiro256++" (<https://prng.di.unimi.it>)
+//! using the "xoshiro256++" (<https://prng.di.unimi.it>)
 //! and "ChaCha12" algorithms (<https://cr.yp.to/chacha.html>),
 //! which are also the ones used by [`rand`](https://crates.io/crates/rand) for its SmallRng
 //! and StdRng, respectively.
