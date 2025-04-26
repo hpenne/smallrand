@@ -10,10 +10,14 @@ use std::ops::BitXor;
 
 #[allow(clippy::doc_markdown)]
 /// This is a random generator based on the ChaCha crypto algorithm with 12 rounds.
+///
 /// This algorithm is currently unbroken and can be used to implement
 /// cryptographically secure random generators, but please note
 /// that no guarantees of any kind are made that this particular implementation
 /// is cryptographically secure.
+///
+/// Note that ChaCha is limited to generating 2^64 blocks (2^70 bytes).
+/// The algorithm will panic if this limit is exceeded.
 #[allow(clippy::module_name_repetitions)]
 pub struct ChaCha12(ChaCha<12>);
 
@@ -32,7 +36,7 @@ impl ChaCha12 {
         #[cfg(unix)]
         let rng = Self::from_device(&mut DevUrandom::new());
         #[cfg(not(unix))]
-        let rng = Self::from_device(&mut GetRandom::new(), nonce);
+        let rng = Self::from_device(&mut GetRandom::new());
         rng
     }
 
@@ -68,6 +72,13 @@ impl ChaCha12 {
     #[cfg(not(feature = "std"))]
     fn nonce() -> [u8; 8] {
         [0; 8]
+    }
+}
+
+#[cfg(feature = "std")]
+impl Default for ChaCha12 {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

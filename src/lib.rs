@@ -9,6 +9,7 @@ mod rng;
 mod smallrng;
 mod xoshiro;
 
+pub use chacha::ChaCha12;
 pub use defaultrng::DefaultRng;
 #[cfg(all(unix, feature = "std"))]
 pub use devices::DevUrandom;

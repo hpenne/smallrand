@@ -10,6 +10,5 @@ default = ["std"]
 std = []
 
 [dependencies]
-chacha = "0.4.0"
 [target.'cfg(not(unix))'.dependencies]
 getrandom = "0.3.2"

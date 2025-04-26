@@ -9,6 +9,7 @@ use crate::xoshiro::Xoshiro256pp;
 /// This is a numerically good PRNG if you need something small and fast
 /// but not cryptographically secure.
 /// The PRNG currently used is `Xoshiro256pp`.
+///
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm/output staying the same then you should
 /// use a specific algorithm instead.

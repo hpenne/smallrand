@@ -7,10 +7,20 @@ use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 
 /// This is the type alias for the default PRNG.
-/// The PRNG currently used is `ChaCha12`.
+/// The PRNG currently used is `ChaCha12`, which is based on the
+/// chacha crypto algorithm with 12 rounds.
+///
+/// This crypto algorithm is currently unbroken and can be used to implement
+/// cryptographically secure random generators, but please note
+/// that no guarantees of any kind are made that this particular implementation
+/// is cryptographically secure.
+///
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm staying the same then you should
 /// use a specific algorithm instead.
+///
+/// Note that chacha is limited to generating 2^64 blocks (2^70 bytes).
+/// The algorithm will panic if this limit is exceeded.
 pub struct DefaultRng(Impl);
 
 type Impl = ChaCha12;
