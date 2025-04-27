@@ -5,7 +5,7 @@
 use crate::devices::DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
 use crate::GetRandom;
-use crate::{RandomDevice, Rng};
+use crate::{nonces, RandomDevice, Rng};
 use std::ops::BitXor;
 
 #[allow(clippy::doc_markdown)]
@@ -57,7 +57,7 @@ impl ChaCha12 {
         T: RandomDevice,
     {
         let seed = random_device.seed_bytes();
-        Self(ChaCha::<12>::new(&seed, Self::nonce()))
+        Self(ChaCha::<12>::new(&seed, nonces::nonce_u128()))
     }
 
     /// Creates a new `ChaCha12` random generator from a specified seed and nonce.
@@ -72,20 +72,6 @@ impl ChaCha12 {
     #[must_use]
     pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
         Self(ChaCha::<12>::new(seed, nonce))
-    }
-
-    #[cfg(feature = "std")]
-    fn nonce() -> [u8; 8] {
-        let duration_since_epoch = std::time::SystemTime::now()
-            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-            .unwrap();
-        #[allow(clippy::cast_possible_truncation)]
-        (duration_since_epoch.as_nanos() as u64).to_ne_bytes()
-    }
-
-    #[cfg(not(feature = "std"))]
-    fn nonce() -> [u8; 8] {
-        [0; 8]
     }
 }
 

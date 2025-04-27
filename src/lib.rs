@@ -29,6 +29,7 @@ extern crate core;
 
 mod chacha;
 mod devices;
+mod nonces;
 mod ranges;
 mod rng;
 mod smallrng;
