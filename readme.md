@@ -33,8 +33,8 @@ FAQ
 * Where does the seed come from?
     - The seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for others. You
       can also write your own `RandomDevice` and use that to provide the seed.
-* Is the DefaultRng cryptographically secure?
-    - The `DefaultRng` uses the ChaCha12 crypto algorithm. This algorithm is currently unbroken and can be used to
+* Is the StdRng cryptographically secure?
+    - The `StdRng` uses the ChaCha12 crypto algorithm. This algorithm is currently unbroken and can be used to
       implement cryptographically secure random generators, but please note that no guarantees of any kind are made that
       this particular implementation is cryptographically secure.
 * How fast is this compared to `rand`?
