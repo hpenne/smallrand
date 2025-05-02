@@ -57,7 +57,7 @@ impl ChaCha12 {
         T: RandomDevice,
     {
         let seed = random_device.seed_bytes();
-        Self(ChaCha::<12>::new(&seed, nonces::nonce_u128()))
+        Self(ChaCha::<12>::new(&seed, nonces::nonce_u64()))
     }
 
     /// Creates a new `ChaCha12` random generator from a specified seed and nonce.
@@ -210,6 +210,7 @@ impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
                 self.inx = 0;
             }
             let to_copy = usize::min(self.buffer.len() - self.inx, destination.len() - out_inx);
+            debug_assert!(to_copy > 0);
             destination[out_inx..(out_inx + to_copy)]
                 .copy_from_slice(&self.buffer[self.inx..(self.inx + to_copy)]);
             out_inx += to_copy;

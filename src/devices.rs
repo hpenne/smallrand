@@ -40,6 +40,12 @@ impl FromRaw for u128 {
     }
 }
 
+/// This is a random device that maps to DevUrandom or GetRandom, depending on the platform
+#[cfg(all(unix, feature = "std"))]
+pub type DefaultDevice = DevUrandom;
+#[cfg(all(not(unix), feature = "std"))]
+type DefaultDevice = GetRandom;
+
 /// This is a random device that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
 pub struct DevUrandom {

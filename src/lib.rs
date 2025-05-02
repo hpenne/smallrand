@@ -37,6 +37,8 @@ mod stdrng;
 mod xoshiro;
 
 pub use chacha::ChaCha12;
+#[cfg(feature = "std")]
+pub use devices::DefaultDevice;
 #[cfg(all(unix, feature = "std"))]
 pub use devices::DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
