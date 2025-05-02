@@ -122,9 +122,52 @@ impl RandomDevice for GetRandom {
     }
 }
 
+/// This is a device that generates an arbitrary length output from a u64 seed
+/// using the SplitMix algorithm from <https://prng.di.unimi.it/splitmix64.c>
+pub struct SplitMixDevice {
+    state: u64,
+}
+
+impl SplitMixDevice {
+    /// Creates a new SplitMixDevice using a u64 seed.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed`: The seed value to initialize with
+    ///
+    /// returns: SplitMixDevice
+    #[must_use]
+    pub fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    fn next(&mut self) -> u64 {
+        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = self.state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^ (z >> 31)
+    }
+}
+
+impl RandomDevice for SplitMixDevice {
+    fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
+        let mut out_inx: usize = 0;
+        let mut output = [0; N];
+        while out_inx < N {
+            let num = usize::min(8, N - out_inx);
+            // The endianness used here should match that used in FromRaw:
+            output[out_inx..(out_inx + num)].copy_from_slice(&self.next().to_be_bytes()[0..num]);
+            out_inx += num;
+        }
+        output
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RandomDevice;
 
     #[cfg(all(unix, feature = "std"))]
     #[test]
@@ -148,5 +191,15 @@ mod tests {
         let seed1: u64 = GetRandom::new().seed();
         let seed2: u64 = GetRandom::new().seed();
         assert_ne!(seed1, seed2);
+    }
+
+    #[test]
+    fn test_splitmix() {
+        let mut dev = SplitMixDevice::new(42);
+        let output: [u8; 12] = dev.seed_bytes();
+        assert_eq!(
+            output,
+            [189, 215, 50, 38, 47, 235, 110, 149, 40, 239, 227, 51]
+        );
     }
 }

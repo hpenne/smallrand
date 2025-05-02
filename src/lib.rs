@@ -44,6 +44,7 @@ pub use devices::DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
 pub use devices::GetRandom;
 pub use devices::RandomDevice;
+pub use devices::SplitMixDevice;
 pub use rng::Rng;
 pub use smallrng::SmallRng;
 pub use stdrng::StdRng;
