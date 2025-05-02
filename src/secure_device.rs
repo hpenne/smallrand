@@ -40,6 +40,8 @@ where
 {
     previous: [u8; 8],
     device: T,
+    repetition_count_tester: RepetitionCountTester,
+    adaptive_proportion_tester: AdaptiveProportionTester,
 }
 
 impl<T> CheckedDevice<T>
@@ -52,6 +54,8 @@ where
         Self {
             previous,
             device: wrapped_device,
+            repetition_count_tester: RepetitionCountTester::default(),
+            adaptive_proportion_tester: AdaptiveProportionTester::default(),
         }
     }
 }
@@ -75,7 +79,6 @@ where
             new_random, self.previous,
             "The entropy source is broken (repeats data)"
         );
-        self.previous = new_random;
 
         self.device.fill(destination);
 
@@ -83,10 +86,90 @@ where
         // output we want to return:
         assert!(
             !destination
-                .windows(self.previous.len())
-                .any(|candidate| candidate == self.previous),
+                .windows(new_random.len())
+                .any(|candidate| candidate == new_random),
             "The entropy source is broken (found earlier data as a substring in new data)"
         );
+
+        // Run the NIST SP 800-90B "Repetition Count Test" (see section 4.4.1)
+        self.repetition_count_tester.test(&new_random);
+        self.repetition_count_tester.test(destination);
+
+        // Run the NIST SP 800-90B "Adaptive Proportion Test" (see section 4.4.2)
+        self.adaptive_proportion_tester.test(&new_random);
+        self.adaptive_proportion_tester.test(destination);
+
+        self.previous = new_random;
+    }
+}
+
+// This is the algorithm from NIST 800-90B section 4.4.1
+#[derive(Default)]
+struct RepetitionCountTester {
+    a: Option<u8>,
+    b: usize,
+}
+
+impl RepetitionCountTester {
+    // NIST SP 800-90B section 4.4 proposes that 1:2^20 is a reasonable
+    // false positive probability.
+    // If we assume that the source has full entropy, then this means that
+    // an error requires four identical samples.
+    const C: usize = 4;
+
+    fn test(&mut self, data: &[u8]) {
+        // This is the algorithm from NIST 800-90B section 4.4.1 in as close
+        // to original form as clippy will allow (hence the short variable names):
+        let mut i = data.iter();
+        if self.a.is_none() {
+            self.a = Some(*i.next().expect("This function requires a non-empty slice"));
+            self.b = 1;
+        }
+        for x in i {
+            if *x == self.a.unwrap() {
+                self.b += 1;
+                assert!(self.b < Self::C, "Repetition Count Test failed");
+            } else {
+                self.a = Some(*x);
+                self.b = 1;
+            }
+        }
+    }
+}
+
+// This is the algorithm from NIST 800-90B section 4.4.2
+#[derive(Default)]
+struct AdaptiveProportionTester {
+    a: u8,
+    b: usize,
+    num_processed: usize,
+}
+
+impl AdaptiveProportionTester {
+    // NIST SP 800-90B section 4.4 proposes that 1:2^20 is a reasonable
+    // false positive probability, which results in these constants:
+    const C: usize = 13;
+    const W: usize = 512;
+
+    fn test(&mut self, data: &[u8]) {
+        for i in data {
+            match self.num_processed {
+                0 => self.a = *i,
+                Self::W => {
+                    // We're throwing away this value,
+                    // to avoid aligning each block on a 512 byte boundary.
+                    self.num_processed = 0;
+                    self.b = 0;
+                }
+                _ => {
+                    if self.a == *i {
+                        self.b += 1;
+                    }
+                    self.num_processed += 1;
+                    assert!(self.b < Self::C, "Adaptive Proportion Test failed");
+                }
+            }
+        }
     }
 }
 
@@ -153,6 +236,39 @@ mod tests {
             core::array::from_fn(|i| (i + 16) as u8),
             [
                 32, 33, 34, 35, 36, 16, 17, 18, 19, 20, 21, 22, 23, 45, 46, 47,
+            ],
+        ]));
+        let mut output = [0_u8; 16];
+        let result = std::panic::catch_unwind(move || {
+            device.fill(&mut output);
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn repetitions_are_detected1() {
+        let mut device = CheckedDevice::new(TestDevice::new(vec![
+            core::array::from_fn(|i| i as u8),
+            core::array::from_fn(|i| (i + 16) as u8),
+            [
+                16, 17, 18, 19, 20, 20, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+            ],
+        ]));
+        let mut output = [0_u8; 16];
+        let result = std::panic::catch_unwind(move || {
+            device.fill(&mut output);
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn repetitions_are_detected2() {
+        let mut device = CheckedDevice::new(TestDevice::new(vec![
+            core::array::from_fn(|i| i as u8),
+            core::array::from_fn(|i| (i + 16) as u8),
+            [
+                // The previous block ends with a 15, so that makes 4 in total
+                15, 15, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
             ],
         ]));
         let mut output = [0_u8; 16];
