@@ -44,7 +44,7 @@ impl FromRaw for u128 {
 #[cfg(all(unix, feature = "std"))]
 pub type DefaultDevice = DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
-type DefaultDevice = GetRandom;
+pub type DefaultDevice = GetRandom;
 
 /// This is a random device that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
