@@ -56,8 +56,10 @@ impl ChaCha12 {
     where
         T: RandomDevice,
     {
-        let seed = random_device.seed_bytes();
-        Self(ChaCha::<12>::new(&seed, nonces::nonce_u64()))
+        let mut key = [0; 32];
+        random_device.fill(&mut key);
+        // ToDo: Secure erase of the key
+        Self(ChaCha::<12>::new(&key, nonces::nonce_u64()))
     }
 
     /// Creates a new `ChaCha12` random generator from a specified seed and nonce.

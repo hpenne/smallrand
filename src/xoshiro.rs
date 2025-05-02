@@ -131,8 +131,10 @@ mod tests {
     struct DummyDevice;
 
     impl crate::RandomDevice for DummyDevice {
-        fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
-            core::array::from_fn(|i| (i + 42) as u8)
+        fn fill(&mut self, destination: &mut [u8]) {
+            for (inx, element) in destination.iter_mut().enumerate() {
+                *element = (inx + 42) as u8;
+            }
         }
     }
 

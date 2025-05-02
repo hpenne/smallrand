@@ -8,10 +8,13 @@ use std::io::Read;
 /// This is a trait for random devices.
 /// Random devices are random sources used to produce seeds for RNGs.
 pub trait RandomDevice {
-    /// Generates an array of random bytes.
+    /// Fills an array with random data.
     ///
-    /// returns: Array of random u8 values
-    fn seed_bytes<const N: usize>(&mut self) -> [u8; N];
+    /// # Arguments
+    ///
+    /// * `destination`: The buffer to fill with random data
+    ///
+    fn fill(&mut self, destination: &mut [u8]);
 
     /// Generates an integer seed value.
     ///
@@ -30,13 +33,17 @@ pub trait FromRaw {
 
 impl FromRaw for u64 {
     fn from_raw<T: RandomDevice>(device: &mut T) -> Self {
-        u64::from_be_bytes(device.seed_bytes::<8>())
+        let mut raw = [0; 8];
+        device.fill(&mut raw);
+        u64::from_be_bytes(raw)
     }
 }
 
 impl FromRaw for u128 {
     fn from_raw<T: RandomDevice>(device: &mut T) -> Self {
-        u128::from_be_bytes(device.seed_bytes::<16>())
+        let mut raw = [0; 16];
+        device.fill(&mut raw);
+        u128::from_be_bytes(raw)
     }
 }
 
@@ -76,16 +83,14 @@ impl Default for DevUrandom {
 
 #[cfg(all(unix, feature = "std"))]
 impl RandomDevice for DevUrandom {
-    fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
-        let mut result = [0; N];
+    fn fill(&mut self, destination: &mut [u8]) {
         self.dev_random
-            .read_exact(&mut result)
+            .read_exact(destination)
             .expect("Failed to read from /dev/urandom");
         assert!(
-            result.iter().any(|v| *v != 0),
+            destination.iter().any(|v| *v != 0),
             "Entropy source generated all zeros!"
         );
-        result
     }
 }
 
@@ -151,16 +156,15 @@ impl SplitMixDevice {
 }
 
 impl RandomDevice for SplitMixDevice {
-    fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
+    fn fill(&mut self, destination: &mut [u8]) {
         let mut out_inx: usize = 0;
-        let mut output = [0; N];
-        while out_inx < N {
-            let num = usize::min(8, N - out_inx);
+        while out_inx < destination.len() {
+            let num = usize::min(8, destination.len() - out_inx);
             // The endianness used here should match that used in FromRaw:
-            output[out_inx..(out_inx + num)].copy_from_slice(&self.next().to_be_bytes()[0..num]);
+            destination[out_inx..(out_inx + num)]
+                .copy_from_slice(&self.next().to_be_bytes()[0..num]);
             out_inx += num;
         }
-        output
     }
 }
 
@@ -196,7 +200,8 @@ mod tests {
     #[test]
     fn test_splitmix() {
         let mut dev = SplitMixDevice::new(42);
-        let output: [u8; 12] = dev.seed_bytes();
+        let mut output = [0; 12];
+        dev.fill(&mut output);
         assert_eq!(
             output,
             [189, 215, 50, 38, 47, 235, 110, 149, 40, 239, 227, 51]
