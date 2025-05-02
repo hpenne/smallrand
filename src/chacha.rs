@@ -58,7 +58,6 @@ impl ChaCha12 {
     {
         let mut key = [0; 32];
         random_device.fill(&mut key);
-        // ToDo: Secure erase of the key
         Self(ChaCha::<12>::new(&key, nonces::nonce_u64()))
     }
 

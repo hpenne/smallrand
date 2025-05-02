@@ -116,14 +116,12 @@ impl Default for GetRandom {
 
 #[cfg(all(not(unix), feature = "std"))]
 impl RandomDevice for GetRandom {
-    fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
-        let mut result = [0; N];
-        getrandom::fill(&mut result).expect("getrandom::fill failed");
+    fn fill(&mut self, destination: &mut [u8]) {
+        getrandom::fill(destination).expect("getrandom::fill failed");
         assert!(
-            result.iter().any(|v| *v != 0),
+            destination.iter().any(|v| *v != 0),
             "getrandom generated all zeros!"
         );
-        result
     }
 }
 
