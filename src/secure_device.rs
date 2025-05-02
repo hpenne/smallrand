@@ -103,11 +103,11 @@ where
     }
 }
 
-// This is the algorithm from NIST 800-90B section 4.4.1
+// This is the Repetition Count Test algorithm from NIST 800-90B section 4.4.1
 #[derive(Default)]
 struct RepetitionCountTester {
-    a: Option<u8>,
-    b: usize,
+    current_value: Option<u8>,
+    num_found: usize,
 }
 
 impl RepetitionCountTester {
@@ -115,58 +115,56 @@ impl RepetitionCountTester {
     // false positive probability.
     // If we assume that the source has full entropy, then this means that
     // an error requires four identical samples.
-    const C: usize = 4;
+    const REPEAT_THRESHOLD: usize = 4;
 
     fn test(&mut self, data: &[u8]) {
-        // This is the algorithm from NIST 800-90B section 4.4.1 in as close
-        // to original form as clippy will allow (hence the short variable names):
         let mut i = data.iter();
-        if self.a.is_none() {
-            self.a = Some(*i.next().expect("This function requires a non-empty slice"));
-            self.b = 1;
+        if self.current_value.is_none() {
+            self.current_value = Some(*i.next().expect("This function requires a non-empty slice"));
+            self.num_found = 1;
         }
         for x in i {
-            if *x == self.a.unwrap() {
-                self.b += 1;
-                assert!(self.b < Self::C, "Repetition Count Test failed");
+            if *x == self.current_value.unwrap() {
+                self.num_found += 1;
+                assert!(self.num_found < Self::REPEAT_THRESHOLD, "Repetition Count Test failed");
             } else {
-                self.a = Some(*x);
-                self.b = 1;
+                self.current_value = Some(*x);
+                self.num_found = 1;
             }
         }
     }
 }
 
-// This is the algorithm from NIST 800-90B section 4.4.2
+// This is the "Adaptive Proportion Test" algorithm from NIST 800-90B section 4.4.2
 #[derive(Default)]
 struct AdaptiveProportionTester {
-    a: u8,
-    b: usize,
+    value_to_count: u8,
+    num_found: usize,
     num_processed: usize,
 }
 
 impl AdaptiveProportionTester {
     // NIST SP 800-90B section 4.4 proposes that 1:2^20 is a reasonable
-    // false positive probability, which results in these constants:
-    const C: usize = 13;
-    const W: usize = 512;
+    // false positive probability, which results in these constants (section 4.4.2):
+    const MAX_NUM: usize = 13;
+    const WINDOW_SIZE: usize = 512;
 
     fn test(&mut self, data: &[u8]) {
         for i in data {
             match self.num_processed {
-                0 => self.a = *i,
-                Self::W => {
+                0 => self.value_to_count = *i,
+                Self::WINDOW_SIZE => {
                     // We're throwing away this value,
                     // to avoid aligning each block on a 512 byte boundary.
                     self.num_processed = 0;
-                    self.b = 0;
+                    self.num_found = 0;
                 }
                 _ => {
-                    if self.a == *i {
-                        self.b += 1;
+                    if self.value_to_count == *i {
+                        self.num_found += 1;
                     }
                     self.num_processed += 1;
-                    assert!(self.b < Self::C, "Adaptive Proportion Test failed");
+                    assert!(self.num_found < Self::MAX_NUM, "Adaptive Proportion Test failed");
                 }
             }
         }
