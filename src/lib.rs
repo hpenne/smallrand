@@ -32,6 +32,7 @@ mod devices;
 mod nonces;
 mod ranges;
 mod rng;
+mod secure_device;
 mod smallrng;
 mod stdrng;
 mod xoshiro;
@@ -46,6 +47,10 @@ pub use devices::GetRandom;
 pub use devices::RandomDevice;
 pub use devices::SplitMixDevice;
 pub use rng::Rng;
+#[cfg(feature = "std")]
+pub use secure_device::CheckedDevice;
+#[cfg(feature = "std")]
+pub use secure_device::SecureDevice;
 pub use smallrng::SmallRng;
 pub use stdrng::StdRng;
 pub use xoshiro::Xoshiro256pp;
