@@ -203,13 +203,17 @@ impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
     where
         Self: Sized,
     {
-        for element in destination.iter_mut() {
+        let mut out_inx: usize = 0;
+        while out_inx < destination.len() {
             if self.inx == self.buffer.len() {
                 self.generate_block();
                 self.inx = 0;
             }
-            *element = self.buffer[self.inx];
-            self.inx += 1;
+            let to_copy = usize::min(self.buffer.len() - self.inx, destination.len() - out_inx);
+            destination[out_inx..(out_inx + to_copy)]
+                .copy_from_slice(&self.buffer[self.inx..(self.inx + to_copy)]);
+            out_inx += to_copy;
+            self.inx += to_copy;
         }
     }
 }
