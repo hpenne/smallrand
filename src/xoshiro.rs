@@ -1,9 +1,5 @@
 #![forbid(unsafe_code)]
 
-#[cfg(all(unix, feature = "std"))]
-use crate::devices::DevUrandom;
-#[cfg(all(not(unix), feature = "std"))]
-use crate::GetRandom;
 use crate::{RandomDevice, Rng};
 
 /// An xoshiro256++ 1.0 (see <https://prng.di.unimi.it>) random generator.
@@ -16,30 +12,13 @@ pub struct Xoshiro256pp {
 }
 
 impl Xoshiro256pp {
-    /// Creates a new xoshiro256++ random generator with a seed from a random device.
+    /// Creates a new xoshiro256++ random generator with a seed from a [RandomDevice].
     ///
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
     ///
-    /// returns: Xoshiro256pp
-    #[cfg(feature = "std")]
-    #[must_use]
-    pub fn new() -> Self {
-        #[cfg(unix)]
-        let rng = Self::from_device(&mut DevUrandom::new());
-        #[cfg(not(unix))]
-        let rng = Self::from_device(&mut GetRandom::new());
-        rng
-    }
-
-    /// Creates a new xoshiro256++ random generator with a seed from a random device.
-    ///
-    /// # Arguments
-    ///
-    /// * `random_device`: The device to get the seed from
-    ///
-    /// returns: Xoshiro256pp
+    /// returns: [Xoshiro256pp]
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
         T: RandomDevice,
@@ -55,13 +34,13 @@ impl Xoshiro256pp {
     /// Providing a value for one and leaving the
     /// others as zeros will generate poor random output.
     /// If you have only one random u64 value to use as seed, then please
-    /// initialize using the SplitMixDevice (see example below).
+    /// initialize using the [SplitMixDevice](crate::SplitMixDevice) (see example below).
     ///
     /// # Arguments
     ///
     /// * `seed`: The seed to use
     ///
-    /// returns: Xoshiro256pp
+    /// returns: [Xoshiro256pp]
     ///
     /// # Examples
     /// ```
@@ -99,13 +78,6 @@ impl Xoshiro256pp {
         self.state[3] = self.state[3].rotate_left(45);
 
         result
-    }
-}
-
-#[cfg(feature = "std")]
-impl Default for Xoshiro256pp {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

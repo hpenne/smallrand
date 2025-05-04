@@ -5,10 +5,11 @@ use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
+use crate::SecureDevice;
 
-/// This is the default random generator. It has more state than `SmallRng`
+/// This is the default random generator. It has more state than [SmallRng](crate::SmallRng)
 /// and is slower, but it has much better security properties.
-/// The PRNG algorithm currently used is `ChaCha12`, which is based on the
+/// The PRNG algorithm currently used is [ChaCha12], which is based on the
 /// chacha crypto algorithm with 12 rounds.
 ///
 /// This crypto algorithm is currently unbroken and can be used to implement
@@ -39,20 +40,19 @@ impl Rng for StdRng {
 }
 
 impl StdRng {
-    /// Creates a new random generator with a seed from a random device.
-    ///
-    /// # Arguments
-    ///
-    /// * `random_device`: The device to get the seed from
+    /// Creates a new random generator with a seed from a [SecureDevice].
+    /// This type of device performs health tests on the system entropy source for extra security.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::new())
+        Self(Impl::from_device(&mut SecureDevice::new()))
     }
 
-    /// Creates a new random generator with a seed from a random device.
+    /// Creates a new random generator with a seed from a [RandomDevice].
+    /// Note that for uses that require security, it is recommended to
+    /// use the `new` function instead, which uses a [SecureDevice] for entrpy.
     ///
     /// # Arguments
     ///
@@ -192,7 +192,7 @@ impl StdRng {
     }
 
     /// Fills a mutable slice of u8 with random values.
-    /// Faster than `fill` for u8 values.
+    /// Faster than [fill](Self::fill()) for u8 values.
     ///
     /// # Arguments
     ///

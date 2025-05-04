@@ -98,7 +98,7 @@ pub trait Rng {
     }
 
     /// Fills a mutable slice of u8 with random values.
-    /// Faster than `fill` for u8 values.
+    /// Faster than [fill](Self::fill()) for u8 values.
     ///
     /// # Arguments
     ///

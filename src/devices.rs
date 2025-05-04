@@ -47,7 +47,7 @@ impl FromRaw for u128 {
     }
 }
 
-/// This is a random device that maps to DevUrandom or GetRandom, depending on the platform
+/// This is a random device that maps to `DevUrandom` or `GetRandom`, depending on the platform
 #[cfg(all(unix, feature = "std"))]
 pub type DefaultDevice = DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
@@ -61,7 +61,7 @@ pub struct DevUrandom {
 
 #[cfg(all(unix, feature = "std"))]
 impl DevUrandom {
-    /// Creates a new `DevUrandom` device.
+    /// Creates a new [DevUrandom] device.
     ///
     /// # Panics
     ///
@@ -132,13 +132,13 @@ pub struct SplitMixDevice {
 }
 
 impl SplitMixDevice {
-    /// Creates a new SplitMixDevice using a u64 seed.
+    /// Creates a new [SplitMixDevice] using a u64 seed.
     ///
     /// # Arguments
     ///
     /// * `seed`: The seed value to initialize with
     ///
-    /// returns: SplitMixDevice
+    /// returns: [SplitMixDevice]
     #[must_use]
     pub fn new(seed: u64) -> Self {
         Self { state: seed }

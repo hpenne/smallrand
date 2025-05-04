@@ -3,12 +3,14 @@ use crate::{DefaultDevice, RandomDevice};
 use std::sync::{Mutex, OnceLock};
 
 /// This is a RandomDevice (entropy source for seeds) which
-/// uses a `DefaultDevice` as its source of data, but performs security
+/// uses a [DefaultDevice] as its source of data, but performs security
 /// tests on the data to check that the device is not broken.
 ///
-/// Note that `SecureDevice` is just a proxy for a global shared device,
-/// so the tests for repeats of earlier samples still work even if
-/// a new `SecureDevice` is created for each use.
+/// These tests include the Health Test in Section 4.4 of NIST SP 800-90B.
+///
+/// Note that [SecureDevice] is just a proxy for a global shared device,
+/// so tests for repeats of earlier samples still work even if
+/// a new [SecureDevice] is created for each use.
 #[derive(Default)]
 pub struct SecureDevice;
 

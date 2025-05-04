@@ -5,10 +5,11 @@ use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
+use crate::DefaultDevice;
 
 /// This is a numerically good PRNG if you need something small and fast
 /// but not cryptographically secure.
-/// The PRNG currently used is `Xoshiro256pp`.
+/// The PRNG currently used is [Xoshiro256pp].
 ///
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm/output staying the same then you should
@@ -30,26 +31,22 @@ impl Rng for SmallRng {
 }
 
 impl SmallRng {
-    /// Creates a new random generator with a seed from a random device.
-    ///
-    /// # Arguments
-    ///
-    /// * `random_device`: The device to get the seed from
+    /// Creates a new random generator with a seed from a [DefaultDevice].
     ///
     /// returns: `SmallRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::new())
+        Self(Impl::from_device(&mut DefaultDevice::new()))
     }
 
-    /// Creates a new random generator with a seed from a random device.
+    /// Creates a new random generator with a seed from a [RandomDevice].
     ///
     /// # Arguments
     ///
     /// * `random_device`: The device to get the seed from
     ///
-    /// returns: `SmallRng`
+    /// returns: [SmallRng]
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
         T: RandomDevice,
@@ -183,7 +180,7 @@ impl SmallRng {
     }
 
     /// Fills a mutable slice of u8 with random values.
-    /// Faster than `fill` for u8 values.
+    /// Faster than [fill](Self::fill()) for u8 values.
     ///
     /// # Arguments
     ///

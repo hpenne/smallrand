@@ -1,10 +1,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::inline_always)]
 
-#[cfg(all(unix, feature = "std"))]
-use crate::devices::DevUrandom;
-#[cfg(all(not(unix), feature = "std"))]
-use crate::GetRandom;
 use crate::{nonces, RandomDevice, Rng};
 use std::ops::BitXor;
 
@@ -22,25 +18,7 @@ use std::ops::BitXor;
 pub struct ChaCha12(ChaCha<12>);
 
 impl ChaCha12 {
-    /// Creates a new `ChaCha12` random generator.
-    /// The nonce is taken from the nanoseconds part of `SystemTime` when
-    /// building with `std` enabled, to provide an extra safety net in case the random
-    /// device is broken.
-    /// For non-std builds, the nonce is 0 (which is what `rand` always does).
-    ///
-    /// returns: `ChaCha12`
-    ///
-    #[cfg(feature = "std")]
-    #[must_use]
-    pub fn new() -> Self {
-        #[cfg(unix)]
-        let rng = Self::from_device(&mut DevUrandom::new());
-        #[cfg(not(unix))]
-        let rng = Self::from_device(&mut GetRandom::new());
-        rng
-    }
-
-    /// Creates a new `ChaCha12` random generator using a seed from a `RandomDevice`.
+    /// Creates a new [ChaCha12] random generator using a seed from a [RandomDevice].
     /// The nonce is taken from the nanoseconds part of `SystemTime` when
     /// building with `std` enabled, to provide an extra safety net in case the random
     /// device is broken.
@@ -50,7 +28,7 @@ impl ChaCha12 {
     ///
     /// * `random_device`: The source of the seed
     ///
-    /// returns: `ChaCha12`
+    /// returns: [ChaCha12]
     ///
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
@@ -61,25 +39,18 @@ impl ChaCha12 {
         Self(ChaCha::<12>::new(&key, nonces::nonce_u64()))
     }
 
-    /// Creates a new `ChaCha12` random generator from a specified seed and nonce.
+    /// Creates a new [ChaCha12] random generator from a specified seed and nonce.
     ///
     /// # Arguments
     ///
     /// * `seed`: The seed (i.e. key) to initialize with
     /// * `nonce`: The nonce to initialize with
     ///
-    /// returns: `ChaCha12`
+    /// returns: [ChaCha12]
     ///
     #[must_use]
     pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
         Self(ChaCha::<12>::new(seed, nonce))
-    }
-}
-
-#[cfg(feature = "std")]
-impl Default for ChaCha12 {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
