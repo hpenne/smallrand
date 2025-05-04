@@ -159,7 +159,11 @@ impl AdaptiveProportionTester {
     fn test(&mut self, data: &[u8]) {
         for i in data {
             match self.num_processed {
-                0 => self.value_to_count = *i,
+                0 => {
+                    self.value_to_count = *i;
+                    self.num_found = 1;
+                    self.num_processed = 1;
+                }
                 Self::WINDOW_SIZE => {
                     // We're throwing away this value,
                     // to avoid aligning each block on a 512 byte boundary.
@@ -297,6 +301,79 @@ mod tests {
         let mut output = [0_u8; 16];
         let result = std::panic::catch_unwind(move || {
             device.fill(&mut output);
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn adaptive_proportion_test_accepts_12_repeats() {
+        let vec1 = vec![0, 1, 2, 0, 4, 5, 6, 7]; // Two 0s here
+        let vec2 = vec![8, 9, 0, 11, 12, 13, 14, 15]; // One 0 here
+        let mut vec3: [u8; 512] = core::array::from_fn(|i| (i + 16) as u8);
+        // Note: There is a zero already at 240.
+        for inx in [53, 93, 123, 135, 147, 254, 275, 328] {
+            vec3[inx] = 0;
+        }
+        let mut device = CheckedDevice::new(TestDevice::new(vec![vec1, vec2, vec3.into()]));
+        let mut output = [0_u8; 512];
+        device.fill(&mut output);
+    }
+
+    #[test]
+    fn adaptive_proportion_test_detects_13_repeats_inside_512_window() {
+        let vec1 = vec![0, 1, 2, 0, 4, 5, 6, 7]; // Two 0s here
+        let vec2 = vec![8, 9, 0, 11, 12, 13, 14, 15]; // One 0 here
+        let mut vec3: [u8; 512] = core::array::from_fn(|i| (i + 16) as u8);
+        // Note: There is a zero already at 240. The zero at 495 is just inside the window
+        for inx in [53, 93, 123, 135, 147, 254, 275, 328, 495] {
+            vec3[inx] = 0;
+        }
+        let mut device = CheckedDevice::new(TestDevice::new(vec![vec1, vec2, vec3.into()]));
+        let mut output = [0_u8; 512];
+        let result = std::panic::catch_unwind(move || {
+            device.fill(&mut output);
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn adaptive_proportion_test_window_ends_after_512() {
+        let vec1 = vec![0, 1, 2, 0, 4, 5, 6, 7]; // Two 0s here
+        let vec2 = vec![8, 9, 0, 11, 12, 13, 14, 15]; // One 0 here
+        let mut vec3: [u8; 512] = core::array::from_fn(|i| (i + 16) as u8);
+        // Note: There is a zero already at 240. Last 0 is outside the window:
+        for inx in [53, 93, 123, 135, 147, 254, 275, 328, 496] {
+            vec3[inx] = 0;
+        }
+        let mut device = CheckedDevice::new(TestDevice::new(vec![vec1, vec2, vec3.into()]));
+        let mut output = [0_u8; 512];
+        device.fill(&mut output);
+    }
+
+    #[test]
+    fn adaptive_proportion_test_second_window_starts_at_513() {
+        let vec1 = vec![0, 1, 2, 0, 4, 5, 6, 7]; // 0 is the counted value. Two 0s here
+        let vec2 = vec![8, 9, 0, 11, 12, 13, 14, 15]; // One 0 here
+        let vec3: [u8; 512 - 16] = core::array::from_fn(|i| (i + 16) as u8);
+        let vec4 = vec![16, 42, 18, 19, 20, 21, 22, 23]; // 16 is skipped, 42 is the counted value in window #2.
+        let mut vec5: [u8; 512] = core::array::from_fn(|i| i as u8);
+
+        // Note: There is a 42 already at 42 and 42 + 256 = 298. Last 42 is just inside window:
+        for inx in [53, 93, 123, 135, 147, 254, 275, 328, 420, 512 - 9] {
+            vec5[inx] = 42;
+        }
+        let mut device = CheckedDevice::new(TestDevice::new(vec![
+            vec1,
+            vec2,
+            vec3.into(),
+            vec4,
+            vec5.into(),
+        ]));
+        let mut output1 = [0_u8; 496];
+        device.fill(&mut output1);
+        let mut output2 = [0_u8; 512];
+        let result = std::panic::catch_unwind(move || {
+            device.fill(&mut output2);
         });
         assert!(result.is_err());
     }
