@@ -5,6 +5,7 @@ use crate::devices::RandomDevice;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
+#[cfg(feature = "std")]
 use crate::SecureDevice;
 
 /// This is the default random generator. It has more state than [SmallRng](crate::SmallRng)

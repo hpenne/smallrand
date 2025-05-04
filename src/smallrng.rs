@@ -5,6 +5,7 @@ use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
+#[cfg(feature = "std")]
 use crate::DefaultDevice;
 
 /// This is a numerically good PRNG if you need something small and fast
