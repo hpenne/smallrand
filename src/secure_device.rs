@@ -51,11 +51,15 @@ where
     fn new(mut wrapped_device: T) -> Self {
         let mut previous = [0; 8];
         wrapped_device.fill(&mut previous);
+        let mut repetition_count_tester = RepetitionCountTester::default();
+        repetition_count_tester.test(&previous);
+        let mut adaptive_proportion_tester = AdaptiveProportionTester::default();
+        adaptive_proportion_tester.test(&previous);
         Self {
             previous,
             device: wrapped_device,
-            repetition_count_tester: RepetitionCountTester::default(),
-            adaptive_proportion_tester: AdaptiveProportionTester::default(),
+            repetition_count_tester,
+            adaptive_proportion_tester,
         }
     }
 }
@@ -126,7 +130,10 @@ impl RepetitionCountTester {
         for x in i {
             if *x == self.current_value.unwrap() {
                 self.num_found += 1;
-                assert!(self.num_found < Self::REPEAT_THRESHOLD, "Repetition Count Test failed");
+                assert!(
+                    self.num_found < Self::REPEAT_THRESHOLD,
+                    "Repetition Count Test failed"
+                );
             } else {
                 self.current_value = Some(*x);
                 self.num_found = 1;
@@ -164,7 +171,10 @@ impl AdaptiveProportionTester {
                         self.num_found += 1;
                     }
                     self.num_processed += 1;
-                    assert!(self.num_found < Self::MAX_NUM, "Adaptive Proportion Test failed");
+                    assert!(
+                        self.num_found < Self::MAX_NUM,
+                        "Adaptive Proportion Test failed"
+                    );
                 }
             }
         }
@@ -184,30 +194,32 @@ mod tests {
 
     #[derive(Default)]
     struct TestDevice {
-        data: Vec<[u8; 16]>,
+        data: Vec<Vec<u8>>,
     }
 
     impl TestDevice {
-        fn new(data: Vec<[u8; 16]>) -> Self {
+        fn new(data: Vec<Vec<u8>>) -> Self {
             Self { data }
         }
     }
 
     impl RandomDevice for TestDevice {
         fn fill(&mut self, destination: &mut [u8]) {
-            destination.copy_from_slice(&self.data.first().unwrap()[0..destination.len()]);
+            destination.copy_from_slice(&self.data.first().unwrap());
             self.data.remove(0);
         }
     }
 
     #[test]
     fn none_repeating_device_is_accepted() {
-        let mut output = [0_u8; 8];
+        let mut output = [0_u8; 16];
         SecureDevice::new().fill(&mut output);
         let mut device = CheckedDevice::new(TestDevice::new(vec![
-            core::array::from_fn(|i| i as u8),
-            core::array::from_fn(|i| (i + 16) as u8),
-            core::array::from_fn(|i| (i + 32) as u8),
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![8, 9, 10, 11, 12, 13, 14, 15],
+            vec![
+                16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+            ],
         ]));
         device.fill(&mut output);
     }
@@ -217,9 +229,8 @@ mod tests {
         let mut output = [0_u8; 8];
         SecureDevice::new().fill(&mut output);
         let mut device = CheckedDevice::new(TestDevice::new(vec![
-            core::array::from_fn(|i| i as u8),
-            core::array::from_fn(|i| i as u8),
-            core::array::from_fn(|i| i as u8),
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
         ]));
         let result = std::panic::catch_unwind(move || {
             device.fill(&mut output);
@@ -230,11 +241,9 @@ mod tests {
     #[test]
     fn repeated_substring_is_detected() {
         let mut device = CheckedDevice::new(TestDevice::new(vec![
-            core::array::from_fn(|i| i as u8),
-            core::array::from_fn(|i| (i + 16) as u8),
-            [
-                32, 33, 34, 35, 36, 16, 17, 18, 19, 20, 21, 22, 23, 45, 46, 47,
-            ],
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![8, 9, 10, 11, 12, 13, 14, 15],
+            vec![16, 17, 18, 19, 8, 9, 10, 11, 12, 13, 14, 15, 28, 29, 30, 31],
         ]));
         let mut output = [0_u8; 16];
         let result = std::panic::catch_unwind(move || {
@@ -246,10 +255,10 @@ mod tests {
     #[test]
     fn repetitions_are_detected1() {
         let mut device = CheckedDevice::new(TestDevice::new(vec![
-            core::array::from_fn(|i| i as u8),
-            core::array::from_fn(|i| (i + 16) as u8),
-            [
-                16, 17, 18, 19, 20, 20, 20, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![8, 9, 10, 11, 12, 13, 14, 15],
+            vec![
+                16, 17, 18, 19, 20, 20, 20, 20, 24, 25, 26, 27, 28, 29, 30, 31,
             ],
         ]));
         let mut output = [0_u8; 16];
@@ -262,11 +271,27 @@ mod tests {
     #[test]
     fn repetitions_are_detected2() {
         let mut device = CheckedDevice::new(TestDevice::new(vec![
-            core::array::from_fn(|i| i as u8),
-            core::array::from_fn(|i| (i + 16) as u8),
-            [
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![8, 9, 10, 11, 12, 13, 14, 15],
+            vec![
                 // The previous block ends with a 15, so that makes 4 in total
-                15, 15, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+                15, 15, 15, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+            ],
+        ]));
+        let mut output = [0_u8; 16];
+        let result = std::panic::catch_unwind(move || {
+            device.fill(&mut output);
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn repetitions_are_detected3() {
+        let mut device = CheckedDevice::new(TestDevice::new(vec![
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![
+                // The previous block ends with a 7, so that makes 4 in total
+                7, 7, 7, 11, 12, 13, 14, 15,
             ],
         ]));
         let mut output = [0_u8; 16];
