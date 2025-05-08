@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use crate::chacha::ChaCha12;
-use crate::devices::RandomDevice;
+use crate::devices::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
@@ -51,7 +51,7 @@ impl StdRng {
         Self(Impl::from_device(&mut SecureDevice::new()))
     }
 
-    /// Creates a new random generator with a seed from a [RandomDevice].
+    /// Creates a new random generator with a seed from an [EntropySource].
     /// Note that for uses that require security, it is recommended to
     /// use the `new` function instead, which uses a [SecureDevice] for entrpy.
     ///
@@ -62,7 +62,7 @@ impl StdRng {
     /// returns: `StdRng`
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
-        T: RandomDevice,
+        T: EntropySource,
     {
         Self(Impl::from_device(random_device))
     }

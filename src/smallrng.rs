@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use crate::devices::RandomDevice;
+use crate::devices::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
@@ -41,7 +41,7 @@ impl SmallRng {
         Self(Impl::from_device(&mut DefaultDevice::new()))
     }
 
-    /// Creates a new random generator with a seed from a [RandomDevice].
+    /// Creates a new random generator with a seed from an [EntropySource].
     ///
     /// # Arguments
     ///
@@ -50,7 +50,7 @@ impl SmallRng {
     /// returns: [SmallRng]
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
-        T: RandomDevice,
+        T: EntropySource,
     {
         Self(Impl::from_device(random_device))
     }

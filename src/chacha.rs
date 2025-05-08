@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::inline_always)]
 
-use crate::{nonces, RandomDevice, Rng};
+use crate::{nonces, EntropySource, Rng};
 use std::ops::BitXor;
 
 #[allow(clippy::doc_markdown)]
@@ -18,7 +18,7 @@ use std::ops::BitXor;
 pub struct ChaCha12(ChaCha<12>);
 
 impl ChaCha12 {
-    /// Creates a new [ChaCha12] random generator using a seed from a [RandomDevice].
+    /// Creates a new [ChaCha12] random generator using a seed from an [EntropySource].
     /// The nonce is taken from the nanoseconds part of `SystemTime` when
     /// building with `std` enabled, to provide an extra safety net in case the random
     /// device is broken.
@@ -32,7 +32,7 @@ impl ChaCha12 {
     ///
     pub fn from_device<T>(random_device: &mut T) -> Self
     where
-        T: RandomDevice,
+        T: EntropySource,
     {
         let mut key = [0; 32];
         random_device.fill(&mut key);

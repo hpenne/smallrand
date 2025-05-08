@@ -37,7 +37,7 @@ FAQ
 
 * Where does the seed come from?
     - The seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for others.
-      You can also implement your own `RandomDevice` and use that to provide the seed.
+      You can also implement your own `EntropySource` and use that to provide the seed.
 * Why would I choose this over `rand`?
     - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`,
       which contains a huge amount of unsafe code.

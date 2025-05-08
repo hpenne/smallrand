@@ -7,7 +7,7 @@ use std::io::Read;
 
 /// This is a trait for random devices.
 /// Random devices are random sources used to produce seeds for RNGs.
-pub trait RandomDevice {
+pub trait EntropySource {
     /// Fills an array with random data.
     ///
     /// # Arguments
@@ -28,11 +28,11 @@ pub trait RandomDevice {
 }
 
 pub trait FromRaw {
-    fn from_raw<T: RandomDevice>(device: &mut T) -> Self;
+    fn from_raw<T: EntropySource>(device: &mut T) -> Self;
 }
 
 impl FromRaw for u64 {
-    fn from_raw<T: RandomDevice>(device: &mut T) -> Self {
+    fn from_raw<T: EntropySource>(device: &mut T) -> Self {
         let mut raw = [0; 8];
         device.fill(&mut raw);
         u64::from_be_bytes(raw)
@@ -40,7 +40,7 @@ impl FromRaw for u64 {
 }
 
 impl FromRaw for u128 {
-    fn from_raw<T: RandomDevice>(device: &mut T) -> Self {
+    fn from_raw<T: EntropySource>(device: &mut T) -> Self {
         let mut raw = [0; 16];
         device.fill(&mut raw);
         u128::from_be_bytes(raw)
@@ -82,7 +82,7 @@ impl Default for DevUrandom {
 }
 
 #[cfg(all(unix, feature = "std"))]
-impl RandomDevice for DevUrandom {
+impl EntropySource for DevUrandom {
     fn fill(&mut self, destination: &mut [u8]) {
         self.dev_random
             .read_exact(destination)
@@ -115,7 +115,7 @@ impl Default for GetRandom {
 }
 
 #[cfg(all(not(unix), feature = "std"))]
-impl RandomDevice for GetRandom {
+impl EntropySource for GetRandom {
     fn fill(&mut self, destination: &mut [u8]) {
         getrandom::fill(destination).expect("getrandom::fill failed");
         assert!(
@@ -125,20 +125,20 @@ impl RandomDevice for GetRandom {
     }
 }
 
-/// This is a device that generates an arbitrary length output from a u64 seed
+/// This implementation of `EntropySource` generates an arbitrary length output from a u64 seed
 /// using the SplitMix algorithm from <https://prng.di.unimi.it/splitmix64.c>
-pub struct SplitMixDevice {
+pub struct SplitMix {
     state: u64,
 }
 
-impl SplitMixDevice {
-    /// Creates a new [SplitMixDevice] using a u64 seed.
+impl SplitMix {
+    /// Creates a new [SplitMix] using a u64 seed.
     ///
     /// # Arguments
     ///
     /// * `seed`: The seed value to initialize with
     ///
-    /// returns: [SplitMixDevice]
+    /// returns: [SplitMix]
     #[must_use]
     pub fn new(seed: u64) -> Self {
         Self { state: seed }
@@ -153,7 +153,7 @@ impl SplitMixDevice {
     }
 }
 
-impl RandomDevice for SplitMixDevice {
+impl EntropySource for SplitMix {
     fn fill(&mut self, destination: &mut [u8]) {
         let mut out_inx: usize = 0;
         while out_inx < destination.len() {
@@ -169,7 +169,7 @@ impl RandomDevice for SplitMixDevice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RandomDevice;
+    use crate::EntropySource;
 
     #[cfg(all(unix, feature = "std"))]
     #[test]
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_splitmix() {
-        let mut dev = SplitMixDevice::new(42);
+        let mut dev = SplitMix::new(42);
         let mut output = [0; 12];
         dev.fill(&mut output);
         assert_eq!(

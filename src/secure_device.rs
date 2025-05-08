@@ -1,8 +1,8 @@
 #![cfg(feature = "std")]
-use crate::{DefaultDevice, RandomDevice};
+use crate::{DefaultDevice, EntropySource};
 use std::sync::{Mutex, OnceLock};
 
-/// This is a RandomDevice (entropy source for seeds) which
+/// This is an `EntropySource` (entropy source for seeds) which
 /// uses a [DefaultDevice] as its source of data, but performs security
 /// tests on the data to check that the device is not broken.
 ///
@@ -24,7 +24,7 @@ impl SecureDevice {
     }
 }
 
-impl RandomDevice for SecureDevice {
+impl EntropySource for SecureDevice {
     fn fill(&mut self, destination: &mut [u8]) {
         SECURE_DEVICE_IMPL
             .get_or_init(|| Mutex::new(CheckedDevice::new(DefaultDevice::new())))
@@ -38,7 +38,7 @@ static SECURE_DEVICE_IMPL: OnceLock<Mutex<CheckedDevice<DefaultDevice>>> = OnceL
 
 struct CheckedDevice<T>
 where
-    T: RandomDevice,
+    T: EntropySource,
 {
     previous: [u8; 8],
     device: T,
@@ -48,7 +48,7 @@ where
 
 impl<T> CheckedDevice<T>
 where
-    T: RandomDevice,
+    T: EntropySource,
 {
     fn new(mut wrapped_device: T) -> Self {
         let mut previous = [0; 8];
@@ -66,9 +66,9 @@ where
     }
 }
 
-impl<T> RandomDevice for CheckedDevice<T>
+impl<T> EntropySource for CheckedDevice<T>
 where
-    T: RandomDevice,
+    T: EntropySource,
 {
     fn fill(&mut self, destination: &mut [u8]) {
         // Ensure that the entropy source does not repeat itself,
@@ -209,7 +209,7 @@ mod tests {
         }
     }
 
-    impl RandomDevice for TestDevice {
+    impl EntropySource for TestDevice {
         fn fill(&mut self, destination: &mut [u8]) {
             destination.copy_from_slice(&self.data.first().unwrap());
             self.data.remove(0);
