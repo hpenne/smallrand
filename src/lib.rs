@@ -11,7 +11,7 @@
 //! It can also be built as no-std, in which case [`getrandom`](https://crates.io/crates/getrandom)
 //! is not used at all (but you´ll then have to provide the seed yourself).
 //!
-//! Quick start
+//! Basic usage:
 //!
 //! ```
 //! #[cfg(feature = "std")]
@@ -24,6 +24,26 @@
 //! let a_float : f64 = rng.range(0.0..42.0);
 //! }
 //! ```
+//!
+//! `smallrand` can also be used as "no-std", in which case you can use it like this:
+//! ```rust
+//! use smallrand::{StdRng, SplitMixDevice};
+//! const SEED : u64 = 42;
+//! let mut rng = StdRng::from_device(&mut SplitMixDevice::new(SEED));
+//! let some_int = rng.random::<u32>();
+//! ```
+//!
+//! The use of the `SplitMixDevice` may seem cumbersome, but this is done for two reasons:
+//! - Requiring that the `StdRng` is initialized from something that implements `RandomDevice`
+//!   (like `SplitMixDevice`) provides an interface independent of the actual algorithm used
+//!   (different algorithms need different amount of entropy when initializing).
+//! - Xoshiro256++ must be initialized with four u64 values. Having that as the interface could
+//!   tempt users to provide only one actual value and use zero for the other three.
+//!   This could cause the algorithm to produce very bad output. The use of `SplitMixDevice`
+//!   generates values that makes most algorithms perform better in this case.
+//!
+//! It is fairly easy to write your own implementation of `RandomDevice` for your platform.
+//!
 #![forbid(unsafe_code)]
 extern crate core;
 
