@@ -59,7 +59,7 @@ mod xoshiro;
 
 pub use chacha::ChaCha12;
 #[cfg(feature = "std")]
-pub use devices::DefaultDevice;
+pub use devices::DefaultEntropy;
 #[cfg(all(unix, feature = "std"))]
 pub use devices::DevUrandom;
 pub use devices::EntropySource;
@@ -68,7 +68,7 @@ pub use devices::GetRandom;
 pub use devices::SplitMix;
 pub use rng::Rng;
 #[cfg(feature = "std")]
-pub use secure_device::SecureDevice;
+pub use secure_device::SecureEntropy;
 pub use smallrng::SmallRng;
 pub use stdrng::StdRng;
 pub use xoshiro::Xoshiro256pp;

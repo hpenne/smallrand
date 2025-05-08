@@ -47,11 +47,11 @@ impl FromRaw for u128 {
     }
 }
 
-/// This is a random device that maps to `DevUrandom` or `GetRandom`, depending on the platform
+/// This is an alias that maps to `DevUrandom` or `GetRandom`, depending on the platform
 #[cfg(all(unix, feature = "std"))]
-pub type DefaultDevice = DevUrandom;
+pub type DefaultEntropy = DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
-pub type DefaultDevice = GetRandom;
+pub type DefaultEntropy = GetRandom;
 
 /// This is a random device that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]

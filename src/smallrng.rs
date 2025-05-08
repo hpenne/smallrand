@@ -6,7 +6,7 @@ use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
 #[cfg(feature = "std")]
-use crate::DefaultDevice;
+use crate::DefaultEntropy;
 
 /// This is a numerically good PRNG if you need something small and fast
 /// but not cryptographically secure.
@@ -32,13 +32,13 @@ impl Rng for SmallRng {
 }
 
 impl SmallRng {
-    /// Creates a new random generator with a seed from a [DefaultDevice].
+    /// Creates a new random generator with a seed from a [DefaultEntropy].
     ///
     /// returns: `SmallRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_device(&mut DefaultDevice::new()))
+        Self(Impl::from_device(&mut DefaultEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].

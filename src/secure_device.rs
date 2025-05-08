@@ -1,40 +1,40 @@
 #![cfg(feature = "std")]
-use crate::{DefaultDevice, EntropySource};
+use crate::{DefaultEntropy, EntropySource};
 use std::sync::{Mutex, OnceLock};
 
 /// This is an `EntropySource` (entropy source for seeds) which
-/// uses a [DefaultDevice] as its source of data, but performs security
+/// uses a [DefaultEntropy] as its source of data, but performs security
 /// tests on the data to check that the device is not broken.
 ///
 /// These tests include the Health Test in Section 4.4 of NIST SP 800-90B.
 ///
-/// Note that [SecureDevice] is just a proxy for a global shared device,
+/// Note that [SecureEntropy] is just a proxy for a global shared device,
 /// so tests for repeats of earlier samples still work even if
-/// a new [SecureDevice] is created for each use.
+/// a new [SecureEntropy] is created for each use.
 #[derive(Default)]
-pub struct SecureDevice;
+pub struct SecureEntropy;
 
-impl SecureDevice {
-    /// Creates a new `SecureDevice`
+impl SecureEntropy {
+    /// Creates a new `SecureEntropy`
     ///
-    /// returns: A new `SecureDevice`
+    /// returns: A new `SecureEntropy`
     #[must_use]
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl EntropySource for SecureDevice {
+impl EntropySource for SecureEntropy {
     fn fill(&mut self, destination: &mut [u8]) {
         SECURE_DEVICE_IMPL
-            .get_or_init(|| Mutex::new(CheckedDevice::new(DefaultDevice::new())))
+            .get_or_init(|| Mutex::new(CheckedDevice::new(DefaultEntropy::new())))
             .lock()
             .unwrap()
             .fill(destination);
     }
 }
 
-static SECURE_DEVICE_IMPL: OnceLock<Mutex<CheckedDevice<DefaultDevice>>> = OnceLock::new();
+static SECURE_DEVICE_IMPL: OnceLock<Mutex<CheckedDevice<DefaultEntropy>>> = OnceLock::new();
 
 struct CheckedDevice<T>
 where
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn secure_device_generates_non_zero_data() {
         let mut output = [0_u8; 8];
-        SecureDevice::new().fill(&mut output);
+        SecureEntropy::new().fill(&mut output);
         assert_ne!([0_u8; 8], output);
     }
 
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn none_repeating_device_is_accepted() {
         let mut output = [0_u8; 16];
-        SecureDevice::new().fill(&mut output);
+        SecureEntropy::new().fill(&mut output);
         let mut device = CheckedDevice::new(TestDevice::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn repeating_device_is_detected() {
         let mut output = [0_u8; 8];
-        SecureDevice::new().fill(&mut output);
+        SecureEntropy::new().fill(&mut output);
         let mut device = CheckedDevice::new(TestDevice::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![0, 1, 2, 3, 4, 5, 6, 7],

@@ -6,7 +6,7 @@ use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 #[cfg(feature = "std")]
-use crate::SecureDevice;
+use crate::SecureEntropy;
 
 /// This is the default random generator. It has more state than [SmallRng](crate::SmallRng)
 /// and is slower, but it has much better security properties.
@@ -41,19 +41,19 @@ impl Rng for StdRng {
 }
 
 impl StdRng {
-    /// Creates a new random generator with a seed from a [SecureDevice].
+    /// Creates a new random generator with a seed from a [SecureEntropy].
     /// This type of device performs health tests on the system entropy source for extra security.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_device(&mut SecureDevice::new()))
+        Self(Impl::from_device(&mut SecureEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].
     /// Note that for uses that require security, it is recommended to
-    /// use the `new` function instead, which uses a [SecureDevice] for entrpy.
+    /// use the `new` function instead, which uses a [SecureEntropy] for entrpy.
     ///
     /// # Arguments
     ///
