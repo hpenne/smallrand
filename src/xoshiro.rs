@@ -97,7 +97,7 @@ impl Rng for Xoshiro256pp {
 #[cfg(test)]
 mod tests {
     use super::Xoshiro256pp;
-    use crate::devices::SplitMix;
+    use crate::entropy::SplitMix;
     use crate::rng::Rng;
 
     struct DummyDevice;

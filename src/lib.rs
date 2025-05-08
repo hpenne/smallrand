@@ -48,7 +48,7 @@
 extern crate core;
 
 mod chacha;
-mod devices;
+mod entropy;
 mod nonces;
 mod ranges;
 mod rng;
@@ -59,13 +59,13 @@ mod xoshiro;
 
 pub use chacha::ChaCha12;
 #[cfg(feature = "std")]
-pub use devices::DefaultEntropy;
+pub use entropy::DefaultEntropy;
 #[cfg(all(unix, feature = "std"))]
-pub use devices::DevUrandom;
-pub use devices::EntropySource;
+pub use entropy::DevUrandom;
+pub use entropy::EntropySource;
 #[cfg(all(not(unix), feature = "std"))]
-pub use devices::GetRandom;
-pub use devices::SplitMix;
+pub use entropy::GetRandom;
+pub use entropy::SplitMix;
 pub use rng::Rng;
 #[cfg(feature = "std")]
 pub use secure_device::SecureEntropy;

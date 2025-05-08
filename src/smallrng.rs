@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use crate::devices::EntropySource;
+use crate::entropy::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
