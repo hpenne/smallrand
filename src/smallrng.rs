@@ -7,6 +7,7 @@ use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
 #[cfg(feature = "std")]
 use crate::DefaultEntropy;
+use crate::SplitMix;
 
 /// This is a numerically good PRNG if you need something small and fast
 /// but not cryptographically secure.
@@ -53,6 +54,29 @@ impl SmallRng {
         T: EntropySource,
     {
         Self(Impl::from_entropy(entropy_source))
+    }
+
+    /// Creates a new random generator with a specified seed.
+    ///
+    /// WARNING: A single u64 is less entropy data than the RNG really needs.
+    /// This function is only intended for testing where you want a fixed seed
+    /// to generate the same output every time.
+    /// You should use other functions to create the RNG in production code.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed`: The seed to use
+    ///
+    /// returns: [SmallRng]
+    ///
+    /// # Examples
+    /// ```
+    /// let mut rng = smallrand::SmallRng::from_seed(42);
+    /// let random_value : u32 = rng.random();
+    /// ```
+    #[must_use]
+    pub fn from_seed(seed: u64) -> Self {
+        Self(Impl::from_entropy(&mut SplitMix::new(seed)))
     }
 
     /// Generates a single random integer
