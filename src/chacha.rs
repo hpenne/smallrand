@@ -21,21 +21,21 @@ impl ChaCha12 {
     /// Creates a new [ChaCha12] random generator using a seed from an [EntropySource].
     /// The nonce is taken from the nanoseconds part of `SystemTime` when
     /// building with `std` enabled, to provide an extra safety net in case the random
-    /// device is broken.
+    /// entropy source is broken.
     /// For non-std builds, the nonce is 0 (which is what `rand` always does).
     ///
     /// # Arguments
     ///
-    /// * `random_device`: The source of the seed
+    /// * `entropy_source`: The source of the seed
     ///
     /// returns: [ChaCha12]
     ///
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
     {
         let mut key = [0; 32];
-        random_device.fill(&mut key);
+        entropy_source.fill(&mut key);
         Self(ChaCha::<12>::new(&key, nonces::nonce_u64()))
     }
 

@@ -38,21 +38,21 @@ impl SmallRng {
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_device(&mut DefaultEntropy::new()))
+        Self(Impl::from_entropy(&mut DefaultEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].
     ///
     /// # Arguments
     ///
-    /// * `random_device`: The device to get the seed from
+    /// * `entropy_source`: The entropy source to get the seed from
     ///
     /// returns: [SmallRng]
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
     {
-        Self(Impl::from_device(random_device))
+        Self(Impl::from_entropy(entropy_source))
     }
 
     /// Generates a single random integer

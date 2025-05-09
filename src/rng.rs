@@ -145,7 +145,7 @@ pub trait Rng {
 }
 
 pub trait ValueFromRng {
-    fn value_from_rng<T: Rng>(device: &mut T) -> Self;
+    fn value_from_rng<T: Rng>(entropy_source: &mut T) -> Self;
 }
 
 impl ValueFromRng for bool {
@@ -208,7 +208,10 @@ impl ValueFromRng for usize {
 }
 
 pub trait RangeFromRng {
-    fn range_from_rng<T: Rng>(device: &mut T, range: impl Into<GenerateRange<Self>>) -> Self
+    fn range_from_rng<T: Rng>(
+        entropy_source: &mut T,
+        range: impl Into<GenerateRange<Self>>,
+    ) -> Self
     where
         Self: Sized;
 }

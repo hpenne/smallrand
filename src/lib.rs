@@ -29,7 +29,7 @@
 //! ```rust
 //! use smallrand::{StdRng, SplitMix};
 //! const SEED : u64 = 42;
-//! let mut rng = StdRng::from_device(&mut SplitMix::new(SEED));
+//! let mut rng = StdRng::from_entropy(&mut SplitMix::new(SEED));
 //! let some_int = rng.random::<u32>();
 //! ```
 //!
@@ -52,7 +52,7 @@ mod entropy;
 mod nonces;
 mod ranges;
 mod rng;
-mod secure_device;
+mod secure_entropy;
 mod smallrng;
 mod stdrng;
 mod xoshiro;
@@ -68,7 +68,7 @@ pub use entropy::GetRandom;
 pub use entropy::SplitMix;
 pub use rng::Rng;
 #[cfg(feature = "std")]
-pub use secure_device::SecureEntropy;
+pub use secure_entropy::SecureEntropy;
 pub use smallrng::SmallRng;
 pub use stdrng::StdRng;
 pub use xoshiro::Xoshiro256pp;

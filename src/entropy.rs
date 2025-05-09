@@ -1,12 +1,12 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::module_name_repetitions)]
 
 #[cfg(all(unix, feature = "std"))]
 use std::fs::File;
 #[cfg(all(unix, feature = "std"))]
 use std::io::Read;
 
-/// This is a trait for random devices.
-/// Random devices are random sources used to produce seeds for RNGs.
+/// This is a trait for entropy sources, used to produce seeds for RNGs.
 pub trait EntropySource {
     /// Fills an array with random data.
     ///
@@ -28,21 +28,21 @@ pub trait EntropySource {
 }
 
 pub trait FromRaw {
-    fn from_raw<T: EntropySource>(device: &mut T) -> Self;
+    fn from_raw<T: EntropySource>(entropy_source: &mut T) -> Self;
 }
 
 impl FromRaw for u64 {
-    fn from_raw<T: EntropySource>(device: &mut T) -> Self {
+    fn from_raw<T: EntropySource>(entropy_source: &mut T) -> Self {
         let mut raw = [0; 8];
-        device.fill(&mut raw);
+        entropy_source.fill(&mut raw);
         u64::from_be_bytes(raw)
     }
 }
 
 impl FromRaw for u128 {
-    fn from_raw<T: EntropySource>(device: &mut T) -> Self {
+    fn from_raw<T: EntropySource>(entropy_source: &mut T) -> Self {
         let mut raw = [0; 16];
-        device.fill(&mut raw);
+        entropy_source.fill(&mut raw);
         u128::from_be_bytes(raw)
     }
 }
@@ -53,7 +53,7 @@ pub type DefaultEntropy = DevUrandom;
 #[cfg(all(not(unix), feature = "std"))]
 pub type DefaultEntropy = GetRandom;
 
-/// This is a random device that generates seeds by reading from /dev/urandom
+/// This is an entropy source that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
 pub struct DevUrandom {
     dev_random: File,
@@ -61,11 +61,11 @@ pub struct DevUrandom {
 
 #[cfg(all(unix, feature = "std"))]
 impl DevUrandom {
-    /// Creates a new [DevUrandom] device.
+    /// Creates a new [DevUrandom] entropy source.
     ///
     /// # Panics
     ///
-    /// Panics if the device is not found or cannot be read from.
+    /// Panics if the entropy source is not found or cannot be read from.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -94,13 +94,13 @@ impl EntropySource for DevUrandom {
     }
 }
 
-/// This is a random device that generates seeds using the getrandom crate.
+/// This is an entropy source that generates seeds using the getrandom crate.
 #[cfg(all(not(unix), feature = "std"))]
 pub struct GetRandom;
 
 #[cfg(all(not(unix), feature = "std"))]
 impl GetRandom {
-    /// Creates a new `GetRandom` device
+    /// Creates a new `GetRandom` entropy source
     #[must_use]
     pub fn new() -> Self {
         Self {}

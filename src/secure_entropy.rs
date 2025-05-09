@@ -4,11 +4,11 @@ use std::sync::{Mutex, OnceLock};
 
 /// This is an `EntropySource` (entropy source for seeds) which
 /// uses a [DefaultEntropy] as its source of data, but performs security
-/// tests on the data to check that the device is not broken.
+/// tests on the data to check that the entropy source is not broken.
 ///
 /// These tests include the Health Test in Section 4.4 of NIST SP 800-90B.
 ///
-/// Note that [SecureEntropy] is just a proxy for a global shared device,
+/// Note that [SecureEntropy] is just a proxy for a global shared entropy source,
 /// so tests for repeats of earlier samples still work even if
 /// a new [SecureEntropy] is created for each use.
 #[derive(Default)]
@@ -26,47 +26,47 @@ impl SecureEntropy {
 
 impl EntropySource for SecureEntropy {
     fn fill(&mut self, destination: &mut [u8]) {
-        SECURE_DEVICE_IMPL
-            .get_or_init(|| Mutex::new(CheckedDevice::new(DefaultEntropy::new())))
+        SECURE_ENTROPY_IMPL
+            .get_or_init(|| Mutex::new(EntropyChecker::new(DefaultEntropy::new())))
             .lock()
             .unwrap()
             .fill(destination);
     }
 }
 
-static SECURE_DEVICE_IMPL: OnceLock<Mutex<CheckedDevice<DefaultEntropy>>> = OnceLock::new();
+static SECURE_ENTROPY_IMPL: OnceLock<Mutex<EntropyChecker<DefaultEntropy>>> = OnceLock::new();
 
-struct CheckedDevice<T>
+struct EntropyChecker<T>
 where
     T: EntropySource,
 {
     previous: [u8; 8],
-    device: T,
+    entropy_source: T,
     repetition_count_tester: RepetitionCountTester,
     adaptive_proportion_tester: AdaptiveProportionTester,
 }
 
-impl<T> CheckedDevice<T>
+impl<T> EntropyChecker<T>
 where
     T: EntropySource,
 {
-    fn new(mut wrapped_device: T) -> Self {
+    fn new(mut wrapped_source: T) -> Self {
         let mut previous = [0; 8];
-        wrapped_device.fill(&mut previous);
+        wrapped_source.fill(&mut previous);
         let mut repetition_count_tester = RepetitionCountTester::default();
         repetition_count_tester.test(&previous);
         let mut adaptive_proportion_tester = AdaptiveProportionTester::default();
         adaptive_proportion_tester.test(&previous);
         Self {
             previous,
-            device: wrapped_device,
+            entropy_source: wrapped_source,
             repetition_count_tester,
             adaptive_proportion_tester,
         }
     }
 }
 
-impl<T> EntropySource for CheckedDevice<T>
+impl<T> EntropySource for EntropyChecker<T>
 where
     T: EntropySource,
 {
@@ -80,13 +80,13 @@ where
         // to retain random data that could be used for encryption keys or other
         // security critical uses by the client code.
         let mut new_random = [0; 8];
-        self.device.fill(&mut new_random);
+        self.entropy_source.fill(&mut new_random);
         assert_ne!(
             new_random, self.previous,
             "The entropy source is broken (repeats data)"
         );
 
-        self.device.fill(destination);
+        self.entropy_source.fill(destination);
 
         // Check that the 8 bytes we fetched above are not present in the
         // output we want to return:
@@ -192,24 +192,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn secure_device_generates_non_zero_data() {
+    fn secure_source_generates_non_zero_data() {
         let mut output = [0_u8; 8];
         SecureEntropy::new().fill(&mut output);
         assert_ne!([0_u8; 8], output);
     }
 
     #[derive(Default)]
-    struct TestDevice {
+    struct TestSource {
         data: Vec<Vec<u8>>,
     }
 
-    impl TestDevice {
+    impl TestSource {
         fn new(data: Vec<Vec<u8>>) -> Self {
             Self { data }
         }
     }
 
-    impl EntropySource for TestDevice {
+    impl EntropySource for TestSource {
         fn fill(&mut self, destination: &mut [u8]) {
             destination.copy_from_slice(&self.data.first().unwrap());
             self.data.remove(0);
@@ -217,50 +217,50 @@ mod tests {
     }
 
     #[test]
-    fn none_repeating_device_is_accepted() {
+    fn none_repeating_source_is_accepted() {
         let mut output = [0_u8; 16];
         SecureEntropy::new().fill(&mut output);
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
             ],
         ]));
-        device.fill(&mut output);
+        entropy_source.fill(&mut output);
     }
 
     #[test]
-    fn repeating_device_is_detected() {
+    fn repeating_source_is_detected() {
         let mut output = [0_u8; 8];
         SecureEntropy::new().fill(&mut output);
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![0, 1, 2, 3, 4, 5, 6, 7],
         ]));
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output);
+            entropy_source.fill(&mut output);
         });
         assert!(result.is_err());
     }
 
     #[test]
     fn repeated_substring_is_detected() {
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![16, 17, 18, 19, 8, 9, 10, 11, 12, 13, 14, 15, 28, 29, 30, 31],
         ]));
         let mut output = [0_u8; 16];
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output);
+            entropy_source.fill(&mut output);
         });
         assert!(result.is_err());
     }
 
     #[test]
     fn repetitions_are_detected1() {
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
@@ -269,14 +269,14 @@ mod tests {
         ]));
         let mut output = [0_u8; 16];
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output);
+            entropy_source.fill(&mut output);
         });
         assert!(result.is_err());
     }
 
     #[test]
     fn repetitions_are_detected2() {
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
@@ -286,14 +286,14 @@ mod tests {
         ]));
         let mut output = [0_u8; 16];
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output);
+            entropy_source.fill(&mut output);
         });
         assert!(result.is_err());
     }
 
     #[test]
     fn repetitions_are_detected3() {
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![
                 // The previous block ends with a 7, so that makes 4 in total
@@ -302,7 +302,7 @@ mod tests {
         ]));
         let mut output = [0_u8; 16];
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output);
+            entropy_source.fill(&mut output);
         });
         assert!(result.is_err());
     }
@@ -316,9 +316,10 @@ mod tests {
         for inx in [53, 93, 123, 135, 147, 254, 275, 328] {
             vec3[inx] = 0;
         }
-        let mut device = CheckedDevice::new(TestDevice::new(vec![vec1, vec2, vec3.into()]));
+        let mut entropy_source =
+            EntropyChecker::new(TestSource::new(vec![vec1, vec2, vec3.into()]));
         let mut output = [0_u8; 512];
-        device.fill(&mut output);
+        entropy_source.fill(&mut output);
     }
 
     #[test]
@@ -330,10 +331,11 @@ mod tests {
         for inx in [53, 93, 123, 135, 147, 254, 275, 328, 495] {
             vec3[inx] = 0;
         }
-        let mut device = CheckedDevice::new(TestDevice::new(vec![vec1, vec2, vec3.into()]));
+        let mut entropy_source =
+            EntropyChecker::new(TestSource::new(vec![vec1, vec2, vec3.into()]));
         let mut output = [0_u8; 512];
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output);
+            entropy_source.fill(&mut output);
         });
         assert!(result.is_err());
     }
@@ -347,9 +349,10 @@ mod tests {
         for inx in [53, 93, 123, 135, 147, 254, 275, 328, 496] {
             vec3[inx] = 0;
         }
-        let mut device = CheckedDevice::new(TestDevice::new(vec![vec1, vec2, vec3.into()]));
+        let mut entropy_source =
+            EntropyChecker::new(TestSource::new(vec![vec1, vec2, vec3.into()]));
         let mut output = [0_u8; 512];
-        device.fill(&mut output);
+        entropy_source.fill(&mut output);
     }
 
     #[test]
@@ -364,7 +367,7 @@ mod tests {
         for inx in [53, 93, 123, 135, 147, 254, 275, 328, 420, 512 - 9] {
             vec5[inx] = 42;
         }
-        let mut device = CheckedDevice::new(TestDevice::new(vec![
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec1,
             vec2,
             vec3.into(),
@@ -372,10 +375,10 @@ mod tests {
             vec5.into(),
         ]));
         let mut output1 = [0_u8; 496];
-        device.fill(&mut output1);
+        entropy_source.fill(&mut output1);
         let mut output2 = [0_u8; 512];
         let result = std::panic::catch_unwind(move || {
-            device.fill(&mut output2);
+            entropy_source.fill(&mut output2);
         });
         assert!(result.is_err());
     }

@@ -42,13 +42,13 @@ impl Rng for StdRng {
 
 impl StdRng {
     /// Creates a new random generator with a seed from a [SecureEntropy].
-    /// This type of device performs health tests on the system entropy source for extra security.
+    /// This type of entropy source performs health tests on the system entropy source for extra security.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_device(&mut SecureEntropy::new()))
+        Self(Impl::from_entropy(&mut SecureEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].
@@ -57,14 +57,14 @@ impl StdRng {
     ///
     /// # Arguments
     ///
-    /// * `random_device`: The device to get the seed from
+    /// * `entropy_source`: The entropy source to get the seed from
     ///
     /// returns: `StdRng`
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
     {
-        Self(Impl::from_device(random_device))
+        Self(Impl::from_entropy(entropy_source))
     }
 
     /// Generates a single random integer
