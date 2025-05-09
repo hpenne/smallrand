@@ -6,8 +6,8 @@ smallrand
 
 Random number generation with absolutely minimal dependencies and no unsafe code.
 
-This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the "
-xoshiro256++" (<https://prng.di.unimi.it>) and "ChaCha12" algorithms (https://cr.yp.to/chacha.html),
+This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the
+"xoshiro256++" (<https://prng.di.unimi.it>) and "ChaCha12" algorithms (https://cr.yp.to/chacha.html),
 which are also the ones used by `rand` for its `SmallRng` and `StdRng`,
 respectively.
 `smallrand` provides the same aliases for these two as `rand` does (`SmallRng` and `StdRng`).
@@ -20,8 +20,6 @@ yourself).
 
 Quick start
 -----------
-
-This shows basic usage:
 
 ```rust
 use smallrand::StdRng;
@@ -50,17 +48,18 @@ FAQ
     - This crate has minimal dependencies and does not intend to change much, so you won't have to update it very often.
     - This crate compiles faster than `rand` due to it smaller size and minimal dependencies.
 * Why would I choose this over `fastrand`?
-    - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as ChaCha12 and Xoshiro256++.
+    - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++ (`SmallRng`).
+    - `smallrand` also offers ChaCha12 (`StdRng`), which has much better security properties than Wyrand.
     - Just like `rand` its API encourages you to use thread local RNG instances.
     - `fastrand` gets its entropy from `std::collections::hash_map::RandomState`.
       This is a not really the purpose of `RandomState` and there seems to be no guarantee that this will work on all
-      platforms.
+      platforms and Rust versions.
       On the other hand, this gives `fastrand` the advantage that it does not need to depend on `getrandom` on any
       platform.
 * How fast is this compared to `rand`?
     - `smallrand` seems to be slightly faster overall on a Apple M1 (see below).
 * Is the `StdRng` cryptographically secure?
-    - Just in with `rand` it might be (depending on how you define the term), but this not in any way guaranteed.
+    - Just as with StdRng in `rand` it might be (depending on how you define the term), but this not in any way guaranteed.
       See also the next section.
 * Can this be used "no-std"?
     - Yes, please see the crate documentation for an example.
@@ -68,17 +67,19 @@ FAQ
 Security
 --------
 
-`SmallRng` uses Xoshiro256++ (a.k.a. `SmallRng`) which is a predictable RNG.
+`SmallRng` uses Xoshiro256++ which is a predictable RNG.
 An attacker that is able to observe its output will be able to calculate its internal state and predict its output,
 which means that it is not cryptographically secure.
 It has this in common with other algorithms of similar size and complexity, like PCG and Wyrand.
 
 `StdRng` uses the ChaCha crypto algorithm with 12 rounds.
-This algorithm well respected and is currently unbroken, and is as such not predictable.
+Current thinking seems to be that 8 rounds is sufficient ([Too Much Crypto](https://eprint.iacr.org/2019/1492.pdf)),
+but 12 currently used for extra security margin.
+This algorithm is well respected and is currently unbroken, and is as such not predictable.
 It can likely be used to implement random generators that are cryptographically secure in practice,
 but please note that no guarantees of any kind are made that this particular implementation is cryptographically secure.
 
-Also note that for a random generator implementation to be certified as cryptographically secure,
+Also note that for a random generator implementation to be certifiable as cryptographically secure,
 it needs to be implemented according to NIST SP 800-90A.
 ChaCha is not one of the approved algorithms allowed by NIST SP 800-90A.
 
