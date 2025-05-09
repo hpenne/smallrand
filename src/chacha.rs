@@ -1,11 +1,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::inline_always)]
 
-#[cfg(all(unix, feature = "std"))]
-use crate::devices::DevUrandom;
-#[cfg(all(not(unix), feature = "std"))]
-use crate::GetRandom;
-use crate::{nonces, RandomDevice, Rng};
+use crate::{nonces, EntropySource, Rng};
 use std::ops::BitXor;
 
 #[allow(clippy::doc_markdown)]
@@ -22,63 +18,39 @@ use std::ops::BitXor;
 pub struct ChaCha12(ChaCha<12>);
 
 impl ChaCha12 {
-    /// Creates a new `ChaCha12` random generator.
+    /// Creates a new [ChaCha12] random generator using a seed from an [EntropySource].
     /// The nonce is taken from the nanoseconds part of `SystemTime` when
     /// building with `std` enabled, to provide an extra safety net in case the random
-    /// device is broken.
-    /// For non-std builds, the nonce is 0 (which is what `rand` always does).
-    ///
-    /// returns: `ChaCha12`
-    ///
-    #[cfg(feature = "std")]
-    #[must_use]
-    pub fn new() -> Self {
-        #[cfg(unix)]
-        let rng = Self::from_device(&mut DevUrandom::new());
-        #[cfg(not(unix))]
-        let rng = Self::from_device(&mut GetRandom::new());
-        rng
-    }
-
-    /// Creates a new `ChaCha12` random generator using a seed from a `RandomDevice`.
-    /// The nonce is taken from the nanoseconds part of `SystemTime` when
-    /// building with `std` enabled, to provide an extra safety net in case the random
-    /// device is broken.
+    /// entropy source is broken.
     /// For non-std builds, the nonce is 0 (which is what `rand` always does).
     ///
     /// # Arguments
     ///
-    /// * `random_device`: The source of the seed
+    /// * `entropy_source`: The source of the seed
     ///
-    /// returns: `ChaCha12`
+    /// returns: [ChaCha12]
     ///
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
-        T: RandomDevice,
+        T: EntropySource,
     {
-        let seed = random_device.seed_bytes();
-        Self(ChaCha::<12>::new(&seed, nonces::nonce_u128()))
+        let mut key = [0; 32];
+        entropy_source.fill(&mut key);
+        Self(ChaCha::<12>::new(&key, nonces::nonce_u64()))
     }
 
-    /// Creates a new `ChaCha12` random generator from a specified seed and nonce.
+    /// Creates a new [ChaCha12] random generator from a specified seed and nonce.
     ///
     /// # Arguments
     ///
     /// * `seed`: The seed (i.e. key) to initialize with
     /// * `nonce`: The nonce to initialize with
     ///
-    /// returns: `ChaCha12`
+    /// returns: [ChaCha12]
     ///
     #[must_use]
     pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
         Self(ChaCha::<12>::new(seed, nonce))
-    }
-}
-
-#[cfg(feature = "std")]
-impl Default for ChaCha12 {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -210,6 +182,7 @@ impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
                 self.inx = 0;
             }
             let to_copy = usize::min(self.buffer.len() - self.inx, destination.len() - out_inx);
+            debug_assert!(to_copy > 0);
             destination[out_inx..(out_inx + to_copy)]
                 .copy_from_slice(&self.buffer[self.inx..(self.inx + to_copy)]);
             out_inx += to_copy;

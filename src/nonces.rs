@@ -13,7 +13,7 @@ use std::hash::{Hash, Hasher};
 static NONCE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(feature = "std")]
-pub fn nonce_u128() -> [u8; 8] {
+pub fn nonce_u64() -> [u8; 8] {
     // Get the time, and XOR seconds with nanoseconds:
     let duration_since_epoch = std::time::SystemTime::now()
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
@@ -41,7 +41,7 @@ pub fn nonce_u128() -> [u8; 8] {
 }
 
 #[cfg(not(feature = "std"))]
-pub fn nonce_u128() -> [u8; 8] {
+pub fn nonce_u64() -> [u8; 8] {
     // We have no time and no hasher, so all we can do
     // is to increment and get the global counter:
     NONCE_COUNTER.fetch_add(1, Ordering::SeqCst).to_ne_bytes()

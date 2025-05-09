@@ -1,10 +1,6 @@
 #![forbid(unsafe_code)]
 
-#[cfg(all(unix, feature = "std"))]
-use crate::devices::DevUrandom;
-#[cfg(all(not(unix), feature = "std"))]
-use crate::GetRandom;
-use crate::{RandomDevice, Rng};
+use crate::{EntropySource, Rng};
 
 /// An xoshiro256++ 1.0 (see <https://prng.di.unimi.it>) random generator.
 /// This is an efficient PRNG with good random properties, but not cryptographically secure:
@@ -16,54 +12,51 @@ pub struct Xoshiro256pp {
 }
 
 impl Xoshiro256pp {
-    /// Creates a new xoshiro256++ random generator with a seed from a random device.
+    /// Creates a new xoshiro256++ random generator with a seed from an [EntropySource].
     ///
     /// # Arguments
     ///
-    /// * `random_device`: The device to get the seed from
+    /// * `entropy_source`: The entropy source to get the seed from
     ///
-    /// returns: Xoshiro256pp
-    #[cfg(feature = "std")]
-    #[must_use]
-    pub fn new() -> Self {
-        #[cfg(unix)]
-        let rng = Self::from_device(&mut DevUrandom::new());
-        #[cfg(not(unix))]
-        let rng = Self::from_device(&mut GetRandom::new());
-        rng
-    }
-
-    /// Creates a new xoshiro256++ random generator with a seed from a random device.
-    ///
-    /// # Arguments
-    ///
-    /// * `random_device`: The device to get the seed from
-    ///
-    /// returns: Xoshiro256pp
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    /// returns: [Xoshiro256pp]
+    pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
-        T: RandomDevice,
+        T: EntropySource,
     {
         Self {
-            state: core::array::from_fn(|_| random_device.seed::<u64>()),
+            state: core::array::from_fn(|_| entropy_source.seed::<u64>()),
         }
     }
 
     /// Creates a new xoshiro256++ random generator with a specified seed.
-    /// The `SplitMix64` algorithm is used to generate more seed bytes
-    /// from the 64 bit seed value in order to initialize the whole state.
+    ///
+    /// Warning: You need to provide values for all four elements of the array.
+    /// Providing a value for one and leaving the
+    /// others as zeros will generate poor random output.
+    /// If you have only one random u64 value to use as seed, then please
+    /// initialize using the [SplitMix](crate::SplitMix) (see example below).
     ///
     /// # Arguments
     ///
     /// * `seed`: The seed to use
     ///
-    /// returns: Xoshiro256pp
+    /// returns: [Xoshiro256pp]
+    ///
+    /// # Examples
+    /// ```
+    /// use smallrand::Rng;
+    /// let mut rng = smallrand::Xoshiro256pp::from_seed([0x12345678, 0x34567812, 0x56781234, 0x78123456]);
+    /// let random_value : u32 = rng.random();
+    /// ```
+    ///
+    /// ```
+    /// use smallrand::Rng;
+    /// let mut rng = smallrand::Xoshiro256pp::from_entropy(&mut smallrand::SplitMix::new(0x12345678));
+    /// let random_value : u32 = rng.random();
+    /// ```
     #[must_use]
-    pub fn from_seed(seed: u64) -> Self {
-        let mut seed_generator = SplitMix64::new(seed);
-        Self {
-            state: core::array::from_fn(|_| seed_generator.next()),
-        }
+    pub fn from_seed(seed: [u64; 4]) -> Self {
+        Self { state: seed }
     }
 
     // This is "next" from the C reference implementation
@@ -88,13 +81,6 @@ impl Xoshiro256pp {
     }
 }
 
-#[cfg(feature = "std")]
-impl Default for Xoshiro256pp {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Rng for Xoshiro256pp {
     #[allow(clippy::cast_possible_truncation)]
     #[inline]
@@ -108,41 +94,24 @@ impl Rng for Xoshiro256pp {
     }
 }
 
-/// This is the `SplitMix` algorithm from <https://prng.di.unimi.it/splitmix64.c>
-/// It is used here to generate more seed bytes from a 64 bit value.
-pub struct SplitMix64 {
-    state: u64,
-}
-
-impl SplitMix64 {
-    fn new(state: u64) -> Self {
-        Self { state }
-    }
-
-    fn next(&mut self) -> u64 {
-        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        let mut z = self.state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-        z ^ (z >> 31)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::Xoshiro256pp;
+    use crate::entropy::SplitMix;
     use crate::rng::Rng;
 
-    struct DummyDevice;
+    struct DummyEntropy;
 
-    impl crate::RandomDevice for DummyDevice {
-        fn seed_bytes<const N: usize>(&mut self) -> [u8; N] {
-            core::array::from_fn(|i| (i + 42) as u8)
+    impl crate::EntropySource for DummyEntropy {
+        fn fill(&mut self, destination: &mut [u8]) {
+            for (inx, element) in destination.iter_mut().enumerate() {
+                *element = (inx + 42) as u8;
+            }
         }
     }
 
     fn xoshiro() -> Xoshiro256pp {
-        Xoshiro256pp::from_device(&mut DummyDevice {})
+        Xoshiro256pp::from_entropy(&mut DummyEntropy {})
     }
 
     #[test]
@@ -171,7 +140,7 @@ mod tests {
     #[test]
     fn test_xoshiro_from_seed() {
         // These test vectors match the values generated by the `rand` crate:
-        let mut rng = Xoshiro256pp::from_seed(0u64);
+        let mut rng = Xoshiro256pp::from_entropy(&mut SplitMix::new(0u64));
         assert_eq!(
             vec![
                 5987356902031041503,
@@ -192,13 +161,13 @@ mod tests {
     #[test]
     fn test_xoshiro_random() {
         // These test vectors match the values generated by the `rand` crate:
-        let mut rng = Xoshiro256pp::from_seed(0u64);
+        let mut rng = Xoshiro256pp::from_entropy(&mut SplitMix::new(0u64));
         assert_eq!(rng.random::<u64>(), 5987356902031041503)
     }
 
     #[test]
     fn test_xoshiro_range() {
-        let mut rng = Xoshiro256pp::from_seed(0u64);
+        let mut rng = Xoshiro256pp::from_entropy(&mut SplitMix::new(0u64));
         assert_eq!(rng.range(11_u8..42), 15)
     }
 

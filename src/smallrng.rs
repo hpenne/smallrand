@@ -1,14 +1,17 @@
 #![forbid(unsafe_code)]
 
-use crate::devices::RandomDevice;
+use crate::entropy::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
+#[cfg(feature = "std")]
+use crate::DefaultEntropy;
+use crate::SplitMix;
 
 /// This is a numerically good PRNG if you need something small and fast
 /// but not cryptographically secure.
-/// The PRNG currently used is `Xoshiro256pp`.
+/// The PRNG currently used is [Xoshiro256pp].
 ///
 /// The algorithm may change at any time, so if your
 /// code depends on the algorithm/output staying the same then you should
@@ -30,31 +33,50 @@ impl Rng for SmallRng {
 }
 
 impl SmallRng {
-    /// Creates a new random generator with a seed from a random device.
-    ///
-    /// # Arguments
-    ///
-    /// * `random_device`: The device to get the seed from
+    /// Creates a new random generator with a seed from a [DefaultEntropy].
     ///
     /// returns: `SmallRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::new())
+        Self(Impl::from_entropy(&mut DefaultEntropy::new()))
     }
 
-    /// Creates a new random generator with a seed from a random device.
+    /// Creates a new random generator with a seed from an [EntropySource].
     ///
     /// # Arguments
     ///
-    /// * `random_device`: The device to get the seed from
+    /// * `entropy_source`: The entropy source to get the seed from
     ///
-    /// returns: `SmallRng`
-    pub fn from_device<T>(random_device: &mut T) -> Self
+    /// returns: [SmallRng]
+    pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
-        T: RandomDevice,
+        T: EntropySource,
     {
-        Self(Impl::from_device(random_device))
+        Self(Impl::from_entropy(entropy_source))
+    }
+
+    /// Creates a new random generator with a specified seed.
+    ///
+    /// WARNING: A single u64 is less entropy data than the RNG really needs.
+    /// This function is only intended for testing where you want a fixed seed
+    /// to generate the same output every time.
+    /// You should use other functions to create the RNG in production code.
+    ///
+    /// # Arguments
+    ///
+    /// * `seed`: The seed to use
+    ///
+    /// returns: [SmallRng]
+    ///
+    /// # Examples
+    /// ```
+    /// let mut rng = smallrand::SmallRng::from_seed(42);
+    /// let random_value : u32 = rng.random();
+    /// ```
+    #[must_use]
+    pub fn from_seed(seed: u64) -> Self {
+        Self(Impl::from_entropy(&mut SplitMix::new(seed)))
     }
 
     /// Generates a single random integer
@@ -183,7 +205,7 @@ impl SmallRng {
     }
 
     /// Fills a mutable slice of u8 with random values.
-    /// Faster than `fill` for u8 values.
+    /// Faster than [fill](Self::fill()) for u8 values.
     ///
     /// # Arguments
     ///
