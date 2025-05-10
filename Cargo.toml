@@ -9,7 +9,7 @@ repository = "https://github.com/hpenne/smallrand"
 description = """
 Random number generation with absolutely minimal dependencies and no unsafe code.
 """
-keywords = ["random", "rng", "prng", "rand", "fastrand", "xoshiro", "xoshiro256++", "chacha", "chacha12"]
+keywords = ["random", "rng", "prng", "rand", "fastrand", "xoshiro", "xoshiro256++", "chacha", "chacha12", "csprng", "csrng"]
 exclude = [".github/workflows/*"]
 
 [features]

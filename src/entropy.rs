@@ -14,6 +14,10 @@ pub trait EntropySource {
     ///
     /// * `destination`: The buffer to fill with random data
     ///
+    /// # Panics
+    ///
+    /// May panic if the entropy source is unavailable or broken.
+    ///
     fn fill(&mut self, destination: &mut [u8]);
 
     /// Generates an integer seed value.
@@ -65,7 +69,8 @@ impl DevUrandom {
     ///
     /// # Panics
     ///
-    /// Panics if the entropy source is not found or cannot be read from.
+    /// Panics if /dev/urandom cannot be opened.
+    ///
     #[must_use]
     pub fn new() -> Self {
         Self {

@@ -80,6 +80,7 @@ struct ChaCha<const ROUNDS: usize> {
 impl<const ROUNDS: usize> ChaCha<ROUNDS> {
     fn new(key: &[u8; 32], nonce: [u8; 8]) -> Self {
         const SIGMA: &[u8; 16] = b"expand 32-byte k";
+        // The unwraps below cannot fail and will get optimized away
         let mut s = Self {
             state: [
                 u32::from_le_bytes(SIGMA[0..4].try_into().unwrap()),
@@ -111,10 +112,13 @@ impl<const ROUNDS: usize> ChaCha<ROUNDS> {
         let mut x = [0_u32; 16];
         x.copy_from_slice(&self.state);
         for _round in (0..ROUNDS).step_by(2) {
+            // Odd round
             Self::quarter_round(&mut x, 0, 4, 8, 12);
             Self::quarter_round(&mut x, 1, 5, 9, 13);
             Self::quarter_round(&mut x, 2, 6, 10, 14);
             Self::quarter_round(&mut x, 3, 7, 11, 15);
+
+            // Even round
             Self::quarter_round(&mut x, 0, 5, 10, 15);
             Self::quarter_round(&mut x, 1, 6, 11, 12);
             Self::quarter_round(&mut x, 2, 7, 8, 13);
@@ -129,8 +133,9 @@ impl<const ROUNDS: usize> ChaCha<ROUNDS> {
         }
         self.state[12] = self.state[12].wrapping_add(1);
         if self.state[12] == 0 {
-            self.state[13] = self.state[13].wrapping_add(1);
-            assert_ne!(0, self.state[13], "Max number of bytes exceeded");
+            self.state[13] = self.state[13]
+                .checked_add(1)
+                .expect("Max number of blocks exceeded");
         }
     }
 
