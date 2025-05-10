@@ -59,7 +59,8 @@ FAQ
 * How fast is this compared to `rand`?
     - `smallrand` seems to be slightly faster overall on a Apple M1 (see below).
 * Is the `StdRng` cryptographically secure?
-    - Just as with StdRng in `rand` it might be (depending on how you define the term), but this not in any way guaranteed.
+    - Just as with StdRng in `rand` it might be (depending on how you define the term), but this not in any way
+      guaranteed.
       See also the next section.
 * Can this be used "no-std"?
     - Yes, please see the crate documentation for an example.
@@ -83,7 +84,7 @@ Also note that for a random generator implementation to be certifiable as crypto
 it needs to be implemented according to NIST SP 800-90A.
 ChaCha is not one of the approved algorithms allowed by NIST SP 800-90A.
 
-`smallrand` makes a modest effort to detect fatal failures of the entropy source,
+`smallrand` makes a modest effort to detect fatal failures of the entropy source when creating an `StdRng` with `new()`,
 including the Health Tests of NIST SP 800-90B.
 
 Speed
