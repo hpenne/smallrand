@@ -4,7 +4,7 @@ smallrand
 [![Test Status](https://github.com/hpenne/smallrand/actions/workflows/rust.yml/badge.svg?event=push)](https://github.com/hpenne/smallrand/actions)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 
-Random number generation with absolutely minimal dependencies and no unsafe code.
+Random number generation with no dependencies and no unsafe code.
 
 This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the
 "xoshiro256++" (<https://prng.di.unimi.it>) and "ChaCha12" algorithms (https://cr.yp.to/chacha.html),
@@ -13,10 +13,10 @@ respectively.
 `smallrand` provides the same aliases for these two as `rand` does (`SmallRng` and `StdRng`).
 
 The crate is intended to be easy to audit.
-Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and that is only used on non-Linux/Unix
-platforms.
-It can also be built as no-std, in which case `getrandom` is not used at all (but you'll then have to provide the seed
-yourself).
+It has no unsafe code,
+and no dependencies unless you opt in to using `getrandom` by specifying the `use-getrandom` feature.
+
+It can also be built as no-std, in which case you'll have to provide your own seeds.
 
 Quick start
 -----------
@@ -34,7 +34,8 @@ FAQ
 ---
 
 * Where does the seed come from?
-    - The seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for others.
+    - The seed is read from /dev/urandom on Linux-like platforms, and taken from `hash_map::RandomState` for others,
+      unless the `use-getrandom` feature is enabled in which case it will use `getrandom`.
       You can also implement your own `EntropySource` and use that to provide the seed.
 * Why would I choose this over `rand`?
     - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`,

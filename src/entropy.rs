@@ -107,10 +107,10 @@ impl EntropySource for DevUrandom {
 }
 
 /// This is an entropy source that generates seeds using the getrandom crate.
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(feature = "use-getrandom")]
 pub struct GetRandom;
 
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(feature = "use-getrandom")]
 impl GetRandom {
     /// Creates a new `GetRandom` entropy source
     #[must_use]
@@ -119,14 +119,14 @@ impl GetRandom {
     }
 }
 
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(feature = "use-getrandom")]
 impl Default for GetRandom {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(feature = "use-getrandom")]
 impl EntropySource for GetRandom {
     fn fill(&mut self, destination: &mut [u8]) {
         getrandom::fill(destination).expect("getrandom::fill failed");
