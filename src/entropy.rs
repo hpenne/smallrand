@@ -225,7 +225,7 @@ mod tests {
         assert_ne!(seed1, seed2);
     }
 
-    #[cfg(all(not(unix), feature = "std"))]
+    #[cfg(feature = "use-getrandom")]
     #[test]
     fn generate_64_bit_seed_with_gev_random() {
         let seed1: u64 = GetRandom::new().seed();
