@@ -143,11 +143,12 @@ impl EntropySource for GetRandom {
 #[derive(Default)]
 pub struct HashMapEntropy;
 
+#[cfg(feature = "std")]
 impl HashMapEntropy {
     /// Creates a new `HashMapEntropy` entropy source
     #[must_use]
     pub fn new() -> Self {
-        Self
+        Self {}
     }
 }
 
