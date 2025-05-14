@@ -6,6 +6,11 @@ use std::fs::File;
 #[cfg(all(unix, feature = "std"))]
 use std::io::Read;
 
+#[cfg(feature = "std")]
+use std::collections::hash_map::RandomState;
+#[cfg(feature = "std")]
+use std::hash::{BuildHasher, Hasher};
+
 /// This is a trait for entropy sources, used to produce seeds for RNGs.
 pub trait EntropySource {
     /// Fills an array with random data.
@@ -52,9 +57,11 @@ impl FromRaw for u128 {
 }
 
 /// This is an alias that maps to `DevUrandom` or `GetRandom`, depending on the platform
-#[cfg(all(unix, feature = "std"))]
+#[cfg(feature = "use-getrandom")]
+pub type DefaultEntropy = HashMapEntropy;
+#[cfg(all(not(feature = "use-getrandom"), unix, feature = "std"))]
 pub type DefaultEntropy = DevUrandom;
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(feature = "use-getrandom"), not(unix), feature = "std"))]
 pub type DefaultEntropy = GetRandom;
 
 /// This is an entropy source that generates seeds by reading from /dev/urandom
@@ -130,6 +137,31 @@ impl EntropySource for GetRandom {
     }
 }
 
+/// This is an entropy source that generates seeds using std::collections::hash_map::RandomState.
+/// This is likely to equivalent to ´getrandom´ on most platforms.
+#[cfg(feature = "std")]
+#[derive(Default)]
+pub struct HashMapEntropy;
+
+impl HashMapEntropy {
+    /// Creates a new `HashMapEntropy` entropy source
+    #[must_use]
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[cfg(feature = "std")]
+impl EntropySource for HashMapEntropy {
+    fn fill(&mut self, destination: &mut [u8]) {
+        let mut chunks = destination.chunks_exact_mut(core::mem::size_of::<u64>());
+        for chunk in chunks.by_ref() {
+            let value = RandomState::new().build_hasher().finish();
+            chunk.copy_from_slice(&value.to_be_bytes());
+        }
+    }
+}
+
 /// This implementation of `EntropySource` generates an arbitrary length output from a u64 seed
 /// using the SplitMix algorithm from <https://prng.di.unimi.it/splitmix64.c>
 pub struct SplitMix {
@@ -201,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn test_splitmix() {
+    fn test_splitmix_1() {
         let mut dev = SplitMix::new(42);
         let mut output = [0; 12];
         dev.fill(&mut output);
@@ -209,5 +241,22 @@ mod tests {
             output,
             [189, 215, 50, 38, 47, 235, 110, 149, 40, 239, 227, 51]
         );
+    }
+
+    #[test]
+    fn test_splitmix_2() {
+        let mut dev = SplitMix::new(1234567);
+        assert_eq!(dev.seed::<u64>(), 6457827717110365317);
+        assert_eq!(dev.seed::<u64>(), 3203168211198807973);
+        assert_eq!(dev.seed::<u64>(), 9817491932198370423);
+        assert_eq!(dev.seed::<u64>(), 4593380528125082431);
+        assert_eq!(dev.seed::<u64>(), 16408922859458223821);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_hash_map_entropy_smoke_test() {
+        let mut dev = HashMapEntropy::new();
+        assert_ne!(dev.seed::<u64>(), dev.seed::<u64>());
     }
 }

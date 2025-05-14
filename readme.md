@@ -15,7 +15,7 @@ respectively.
 The crate is intended to be easy to audit.
 Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and that is only used on non-Linux/Unix
 platforms.
-It can also be built as no-std, in which case `getrandom` is not used at all (but you´ll then have to provide the seed
+It can also be built as no-std, in which case `getrandom` is not used at all (but you'll then have to provide the seed
 yourself).
 
 Quick start

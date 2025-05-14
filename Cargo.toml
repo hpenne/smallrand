@@ -15,7 +15,8 @@ exclude = [".github/workflows/*"]
 [features]
 default = ["std"]
 std = []
+use-getrandom = ["getrandom"]
 
 [dependencies]
 [target.'cfg(not(unix))'.dependencies]
-getrandom = "0.3.2"
+getrandom = { version = "0.3.2", optional = true }
