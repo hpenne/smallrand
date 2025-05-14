@@ -58,11 +58,11 @@ impl FromRaw for u128 {
 
 /// This is an alias that maps to `DevUrandom` or `GetRandom`, depending on the platform
 #[cfg(feature = "use-getrandom")]
-pub type DefaultEntropy = HashMapEntropy;
+pub type DefaultEntropy = GetRandom;
 #[cfg(all(not(feature = "use-getrandom"), unix, feature = "std"))]
 pub type DefaultEntropy = DevUrandom;
 #[cfg(all(not(feature = "use-getrandom"), not(unix), feature = "std"))]
-pub type DefaultEntropy = GetRandom;
+pub type DefaultEntropy = HashMapEntropy;
 
 /// This is an entropy source that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
