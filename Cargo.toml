@@ -13,9 +13,10 @@ keywords = ["random", "prng", "rand", "xoshiro", "chacha"]
 exclude = [".github/workflows/*"]
 
 [features]
-default = ["std"]
+default = ["std", "allow-getrandom"]
 std = []
+allow-getrandom = ["getrandom"]
 
 [dependencies]
 [target.'cfg(not(unix))'.dependencies]
-getrandom = "0.3.2"
+getrandom = { version = "0.3.2", optional = true }

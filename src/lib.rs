@@ -63,8 +63,10 @@ pub use entropy::DefaultEntropy;
 #[cfg(all(unix, feature = "std"))]
 pub use entropy::DevUrandom;
 pub use entropy::EntropySource;
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 pub use entropy::GetRandom;
+#[cfg(feature = "std")]
+pub use entropy::HashMapEntropy;
 pub use entropy::SplitMix;
 pub use rng::Rng;
 #[cfg(feature = "std")]

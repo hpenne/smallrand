@@ -45,3 +45,7 @@ jobs:
         run: cargo build --verbose --no-default-features
       - name: Run tests with no-default-features
         run: cargo test --verbose --no-default-features
+      - name: Build without allow-getrandom
+        run: cargo build --verbose --no-default-features --features std
+      - name: Run tests without allow-getrandom
+        run: cargo test --verbose --no-default-features --features std

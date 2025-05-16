@@ -6,6 +6,11 @@ use std::fs::File;
 #[cfg(all(unix, feature = "std"))]
 use std::io::Read;
 
+#[cfg(feature = "std")]
+use std::collections::hash_map::RandomState;
+#[cfg(feature = "std")]
+use std::hash::{BuildHasher, Hasher};
+
 /// This is a trait for entropy sources, used to produce seeds for RNGs.
 pub trait EntropySource {
     /// Fills an array with random data.
@@ -54,8 +59,10 @@ impl FromRaw for u128 {
 /// This is an alias that maps to `DevUrandom` or `GetRandom`, depending on the platform
 #[cfg(all(unix, feature = "std"))]
 pub type DefaultEntropy = DevUrandom;
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 pub type DefaultEntropy = GetRandom;
+#[cfg(all(not(unix), not(feature = "allow-getrandom"), feature = "std"))]
+pub type DefaultEntropy = HashMapEntropy;
 
 /// This is an entropy source that generates seeds by reading from /dev/urandom
 #[cfg(all(unix, feature = "std"))]
@@ -100,10 +107,10 @@ impl EntropySource for DevUrandom {
 }
 
 /// This is an entropy source that generates seeds using the getrandom crate.
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 pub struct GetRandom;
 
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 impl GetRandom {
     /// Creates a new `GetRandom` entropy source
     #[must_use]
@@ -112,14 +119,14 @@ impl GetRandom {
     }
 }
 
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 impl Default for GetRandom {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(all(not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 impl EntropySource for GetRandom {
     fn fill(&mut self, destination: &mut [u8]) {
         getrandom::fill(destination).expect("getrandom::fill failed");
@@ -127,6 +134,32 @@ impl EntropySource for GetRandom {
             destination.iter().any(|v| *v != 0),
             "getrandom generated all zeros!"
         );
+    }
+}
+
+/// This is an entropy source that generates seeds using std::collections::hash_map::RandomState.
+/// This is likely to equivalent to ´getrandom´ on most platforms.
+#[cfg(feature = "std")]
+#[derive(Default)]
+pub struct HashMapEntropy;
+
+#[cfg(feature = "std")]
+impl HashMapEntropy {
+    /// Creates a new `HashMapEntropy` entropy source
+    #[must_use]
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[cfg(feature = "std")]
+impl EntropySource for HashMapEntropy {
+    fn fill(&mut self, destination: &mut [u8]) {
+        let mut chunks = destination.chunks_exact_mut(core::mem::size_of::<u64>());
+        for chunk in chunks.by_ref() {
+            let value = RandomState::new().build_hasher().finish();
+            chunk.copy_from_slice(&value.to_be_bytes());
+        }
     }
 }
 
@@ -192,7 +225,7 @@ mod tests {
         assert_ne!(seed1, seed2);
     }
 
-    #[cfg(all(not(unix), feature = "std"))]
+    #[cfg(all(not(unix), feature = "allow-getrandom"))]
     #[test]
     fn generate_64_bit_seed_with_gev_random() {
         let seed1: u64 = GetRandom::new().seed();
@@ -201,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn test_splitmix() {
+    fn test_splitmix_1() {
         let mut dev = SplitMix::new(42);
         let mut output = [0; 12];
         dev.fill(&mut output);
@@ -209,5 +242,22 @@ mod tests {
             output,
             [189, 215, 50, 38, 47, 235, 110, 149, 40, 239, 227, 51]
         );
+    }
+
+    #[test]
+    fn test_splitmix_2() {
+        let mut dev = SplitMix::new(1234567);
+        assert_eq!(dev.seed::<u64>(), 6457827717110365317);
+        assert_eq!(dev.seed::<u64>(), 3203168211198807973);
+        assert_eq!(dev.seed::<u64>(), 9817491932198370423);
+        assert_eq!(dev.seed::<u64>(), 4593380528125082431);
+        assert_eq!(dev.seed::<u64>(), 16408922859458223821);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_hash_map_entropy_smoke_test() {
+        let mut dev = HashMapEntropy::new();
+        assert_ne!(dev.seed::<u64>(), dev.seed::<u64>());
     }
 }
