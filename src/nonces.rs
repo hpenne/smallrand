@@ -5,7 +5,7 @@
 use core::ops::BitXor;
 use core::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "std")]
-use std::collections::hash_map::DefaultHasher;
+use std::hash::{BuildHasher, RandomState};
 #[cfg(feature = "std")]
 use std::hash::{Hash, Hasher};
 
@@ -24,10 +24,9 @@ pub fn nonce_u64() -> [u8; 8] {
     // Increment and get the global counter:
     let from_counter = NONCE_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-    // Pass these two values through the DefaultHasher, which is in itself
-    // a source of entropy (hashing only a zero should give different output
-    // one every boot):
-    let mut hasher = DefaultHasher::new();
+    // Pass these two values through a hashed built from RandomState, which is in itself
+    // a source of entropy:
+    let mut hasher = RandomState::new().build_hasher();
     from_time.hash(&mut hasher);
     from_counter.hash(&mut hasher);
 
