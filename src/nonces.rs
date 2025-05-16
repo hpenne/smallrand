@@ -5,9 +5,9 @@
 use core::ops::BitXor;
 use core::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "std")]
-use std::hash::{BuildHasher, RandomState};
+use std::collections::hash_map::RandomState;
 #[cfg(feature = "std")]
-use std::hash::{Hash, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 
 // Define a global static atomic counter
 static NONCE_COUNTER: AtomicU64 = AtomicU64::new(0);
