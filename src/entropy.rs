@@ -57,11 +57,11 @@ impl FromRaw for u128 {
 }
 
 /// This is an alias that maps to `DevUrandom` or `GetRandom`, depending on the platform
-#[cfg(feature = "use-getrandom")]
-pub type DefaultEntropy = GetRandom;
-#[cfg(all(not(feature = "use-getrandom"), unix, feature = "std"))]
+#[cfg(all(unix, feature = "std"))]
 pub type DefaultEntropy = DevUrandom;
-#[cfg(all(not(feature = "use-getrandom"), not(unix), feature = "std"))]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
+pub type DefaultEntropy = GetRandom;
+#[cfg(all(not(unix), not(feature = "allow-getrandom"), feature = "std"))]
 pub type DefaultEntropy = HashMapEntropy;
 
 /// This is an entropy source that generates seeds by reading from /dev/urandom
@@ -107,10 +107,10 @@ impl EntropySource for DevUrandom {
 }
 
 /// This is an entropy source that generates seeds using the getrandom crate.
-#[cfg(feature = "use-getrandom")]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 pub struct GetRandom;
 
-#[cfg(feature = "use-getrandom")]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 impl GetRandom {
     /// Creates a new `GetRandom` entropy source
     #[must_use]
@@ -119,14 +119,14 @@ impl GetRandom {
     }
 }
 
-#[cfg(feature = "use-getrandom")]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 impl Default for GetRandom {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "use-getrandom")]
+#[cfg(all(not(unix), feature = "allow-getrandom"))]
 impl EntropySource for GetRandom {
     fn fill(&mut self, destination: &mut [u8]) {
         getrandom::fill(destination).expect("getrandom::fill failed");
@@ -225,7 +225,7 @@ mod tests {
         assert_ne!(seed1, seed2);
     }
 
-    #[cfg(feature = "use-getrandom")]
+    #[cfg(all(not(unix), feature = "allow-getrandom"))]
     #[test]
     fn generate_64_bit_seed_with_gev_random() {
         let seed1: u64 = GetRandom::new().seed();
