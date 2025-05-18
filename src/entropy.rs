@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(all(unix, feature = "std"))]

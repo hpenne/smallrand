@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![allow(clippy::doc_markdown)]
 //! This crate provides a lightweight alternative to rand,
 //! using the "xoshiro256++" (<https://prng.di.unimi.it>)
@@ -44,7 +45,6 @@
 //!
 //! It is fairly easy to write your own implementation of `EntropySource` for your platform.
 //!
-#![forbid(unsafe_code)]
 extern crate core;
 
 mod chacha;

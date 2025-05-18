@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use crate::entropy::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;

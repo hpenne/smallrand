@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![allow(clippy::inline_always)]
 
 use crate::{nonces, EntropySource, Rng};
