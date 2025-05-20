@@ -247,3 +247,47 @@ impl Default for StdRng {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{Rng, SplitMix, StdRng};
+
+    #[test]
+    fn test_forwarding() {
+        // Test that call forwarding isn't completely broken
+        // (the forwarded-to functions are tested in xoshiro.rs)
+        let mut rng = StdRng::from_entropy(&mut SplitMix::new(12345678));
+        assert_ne!(rng.random_u32(), rng.random_u32());
+        assert_ne!(rng.random_u64(), rng.random_u64());
+        assert_ne!(rng.random::<u64>(), rng.random::<u64>());
+
+        assert_ne!(rng.range::<u32>(0..42), rng.range::<u32>(0..42));
+
+        {
+            let mut i = rng.iter::<u128>();
+            i.next();
+            assert_ne!(i.next(), i.next());
+        }
+
+        {
+            let mut i = rng.iter_u8();
+            i.next();
+            assert_ne!(i.next(), i.next());
+        }
+
+        let mut a1 = [0_u8; 32];
+        let mut a2 = [0_u8; 32];
+        rng.fill(&mut a1);
+        rng.fill(&mut a2);
+        assert_ne!(a1, a2);
+
+        a2 = a1;
+        rng.fill_u8(&mut a1);
+        rng.fill_u8(&mut a2);
+        assert_ne!(a1, a2);
+
+        a2 = a1;
+        rng.shuffle(&mut a2);
+        assert_ne!(a1, a2);
+    }
+}

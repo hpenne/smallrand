@@ -369,8 +369,11 @@ impl RangeFromRng for f32 {
         let normalized = if (r >> 23) != 0 {
             (r as f32) / 2_f32.powi(64)
         } else {
-            let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
-            (r as f32) / 2_f32.powi(128)
+            // Make a random u128 by using 64 more random bits. The 41 MSBs are zeros.
+            // Shift left these 41 bits to avoid having to divide by 2^128 on the next line,
+            // as 2^128 in f32 is infinity, which in turn would make the result always 0...
+            let r = ((u128::from(r) << 64) | u128::from(rng.random::<u64>())) << 41;
+            (r as f32) / 2_f32.powi(128 - 41)
         };
         normalized * span + start
     }
@@ -590,18 +593,33 @@ mod tests {
     }
 
     #[test]
-    fn test_float_ranges() {
+    fn test_float_ranges_f64() {
         for leading_zeros in 0..64 {
             let mut rng = FloatRangeGenerator::new(leading_zeros);
             let value: f64 = rng.range(0.0..1.0);
             let bytes = value.to_ne_bytes();
 
-            // The algorithm should always fill the manitissa, so the "DEADBEEF" pattern
+            // The algorithm should always fill the mantissa, so the "DEADBEEF" pattern
             // should always be in the same place:
             assert_eq!(bytes[5], 0xea);
             assert_eq!(bytes[4], 0xdb);
             assert_eq!(bytes[3], 0xee);
             assert_eq!(bytes[2], 0xfd);
+        }
+    }
+
+    #[test]
+    fn test_float_ranges_f32() {
+        for leading_zeros in 0..64 {
+            let mut rng = FloatRangeGenerator::new(leading_zeros);
+            let value: f32 = rng.range(0.0..1.0);
+            let bytes = value.to_ne_bytes();
+            println!("{}: {:?}", leading_zeros, bytes);
+
+            // The algorithm should always fill the mantissa,
+            // so the mantissa should always be the same with this generator:
+            assert_eq!(bytes[0], 223);
+            assert_eq!(bytes[1], 86);
         }
     }
 
