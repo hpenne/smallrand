@@ -342,7 +342,7 @@ range_from_rng! {isize, usize, u32}
 range_from_rng! {isize, usize, u64}
 
 impl RangeFromRng for f32 {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
     fn range_from_rng<T: Rng>(rng: &mut T, range: impl Into<GenerateRange<f32>>) -> Self {
         let GenerateRange {
             start,
@@ -364,16 +364,18 @@ impl RangeFromRng for f32 {
         // to make the integer value u128 if necessary.
         // It is theoretically possible that a u128 this still not enough, but the probability
         // of that many leading zero bits is more than small enough to ignore.
-        // Allways using u128 would be simpler, but not as fast.
+        // Always using u128 would be simpler, but not as fast.
         let r = rng.random::<u64>();
         let normalized = if (r >> 23) != 0 {
             (r as f32) / 2_f32.powi(64)
         } else {
-            // Make a random u128 by using 64 more random bits. The 41 MSBs are zeros.
-            // Shift left these 41 bits to avoid having to divide by 2^128 on the next line,
-            // as 2^128 in f32 is infinity, which in turn would make the result always 0...
-            let r = ((u128::from(r) << 64) | u128::from(rng.random::<u64>())) << 41;
-            (r as f32) / 2_f32.powi(128 - 41)
+            // Make a random u128 by using 64 more random bits.
+            // Conversion via f64 may seem unnecessary, but going directly to f32
+            // is not possible without over/underflow problems.
+            // There are other ways around that, but this branch is not on the hot path
+            // so simplicity wins here.
+            let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
+            ((r as f64) / 2_f64.powi(128)) as f32
         };
         normalized * span + start
     }
@@ -402,11 +404,12 @@ impl RangeFromRng for f64 {
         // to make the integer value u128 if necessary.
         // It is theoretically possible that a u128 this still not enough, but the probability
         // of that many leading zero bits is more than small enough to ignore.
-        // Allways using u128 would be simpler, but not as fast.
+        // Always using u128 would be simpler, but not as fast.
         let r = rng.random::<u64>();
         let normalized = if (r >> 52) != 0 {
             (r as f64) / 2_f64.powi(64)
         } else {
+            // Make a random u128 by using 64 more random bits.
             let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
             (r as f64) / 2_f64.powi(128)
         };
@@ -597,14 +600,19 @@ mod tests {
         for leading_zeros in 0..64 {
             let mut rng = FloatRangeGenerator::new(leading_zeros);
             let value: f64 = rng.range(0.0..1.0);
-            let bytes = value.to_ne_bytes();
 
-            // The algorithm should always fill the mantissa, so the "DEADBEEF" pattern
-            // should always be in the same place:
+            // The algorithm should always fill the mantissa, so the (slightly modified)
+            // "DEADBEEF" pattern should always be in the same place:
+            let bytes = value.to_ne_bytes();
             assert_eq!(bytes[5], 0xea);
             assert_eq!(bytes[4], 0xdb);
             assert_eq!(bytes[3], 0xee);
             assert_eq!(bytes[2], 0xfd);
+            assert_eq!(bytes[1], 0xea);
+
+            // The exponent is a function of the number of leading zero bits:
+            let exponent = u64::from_be_bytes(value.to_be_bytes()) >> 52;
+            assert_eq!(exponent as usize, 1022 - leading_zeros);
         }
     }
 
@@ -613,13 +621,16 @@ mod tests {
         for leading_zeros in 0..64 {
             let mut rng = FloatRangeGenerator::new(leading_zeros);
             let value: f32 = rng.range(0.0..1.0);
-            let bytes = value.to_ne_bytes();
-            println!("{}: {:?}", leading_zeros, bytes);
 
             // The algorithm should always fill the mantissa,
             // so the mantissa should always be the same with this generator:
+            let bytes = value.to_ne_bytes();
             assert_eq!(bytes[0], 223);
             assert_eq!(bytes[1], 86);
+
+            // The exponent is a function of the number of leading zero bits:
+            let exponent = u32::from_be_bytes(value.to_be_bytes()) >> 23;
+            assert_eq!(exponent as usize, 126 - leading_zeros);
         }
     }
 
