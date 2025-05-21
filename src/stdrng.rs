@@ -269,11 +269,9 @@ mod tests {
             assert_ne!(i.next(), i.next());
         }
 
-        {
-            let mut i = rng.iter_u8();
-            i.next();
-            assert_ne!(i.next(), i.next());
-        }
+        // We can't do a similar test of iter_u8 here because the StdRng uses an internally
+        // generated nonce so the numbers are different for every run and hence there is a not
+        // insignificant likelihood that two consecutive u8 values will not be different.
 
         let mut a1 = [0_u8; 32];
         let mut a2 = [0_u8; 32];
