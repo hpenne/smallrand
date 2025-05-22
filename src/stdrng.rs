@@ -239,6 +239,13 @@ impl StdRng {
     {
         self.0.shuffle(target);
     }
+
+    pub fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
+    where
+        T: EntropySource,
+    {
+        Self(Impl::from_entropy_and_nonce(entropy_source, nonce))
+    }
 }
 
 #[cfg(feature = "std")]
@@ -256,15 +263,24 @@ mod tests {
     fn test_forwarding() {
         // Test that call forwarding isn't completely broken
         // (the forwarded-to functions are tested in xoshiro.rs)
-        let mut rng = StdRng::from_entropy(&mut SplitMix::new(12345678));
+        let mut rng =
+            StdRng::from_entropy_and_nonce(&mut SplitMix::new(12345678), [1, 2, 3, 4, 5, 6, 7, 8]);
         assert_ne!(rng.random_u32(), rng.random_u32());
         assert_ne!(rng.random_u64(), rng.random_u64());
+        assert_ne!(rng.random::<u16>(), rng.random::<u16>());
+        assert_ne!(rng.random::<u32>(), rng.random::<u32>());
         assert_ne!(rng.random::<u64>(), rng.random::<u64>());
 
-        assert_ne!(rng.range::<u32>(0..42), rng.range::<u32>(0..42));
+        assert_ne!(rng.range::<u32>(0..12452), rng.range::<u32>(0..12452));
 
         {
             let mut i = rng.iter::<u128>();
+            i.next();
+            assert_ne!(i.next(), i.next());
+        }
+
+        {
+            let mut i = rng.iter_u8();
             i.next();
             assert_ne!(i.next(), i.next());
         }
@@ -287,5 +303,21 @@ mod tests {
         a2 = a1;
         rng.shuffle(&mut a2);
         assert_ne!(a1, a2);
+    }
+
+    #[test]
+    fn same_entropy_and_nonce_generates_same_values() {
+        let mut rng1 =
+            StdRng::from_entropy_and_nonce(&mut SplitMix::new(12345678), [1, 2, 3, 4, 5, 6, 7, 8]);
+        let mut rng2 =
+            StdRng::from_entropy_and_nonce(&mut SplitMix::new(12345678), [1, 2, 3, 4, 5, 6, 7, 8]);
+        assert_eq!(rng1.random_u64(), rng2.random_u64());
+    }
+
+    #[test]
+    fn different_entropy_produces_different_values() {
+        let mut rng1 = StdRng::from_entropy(&mut SplitMix::new(12345678));
+        let mut rng2 = StdRng::from_entropy(&mut SplitMix::new(87654321));
+        assert_ne!(rng1.random_u64(), rng2.random_u64());
     }
 }

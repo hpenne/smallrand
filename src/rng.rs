@@ -420,6 +420,7 @@ impl RangeFromRng for f64 {
 #[cfg(test)]
 mod tests {
     use crate::rng::Rng;
+    use crate::{SplitMix, Xoshiro256pp};
 
     struct CountingRng(pub u64);
 
@@ -636,10 +637,15 @@ mod tests {
 
     #[test]
     fn test_shuffle() {
-        let mut rng = CountingRng::new();
-        let mut numbers = vec![1, 2, 3, 4, 5];
+        let mut rng = Xoshiro256pp::from_entropy(&mut SplitMix::new(42));
+        let mut numbers = vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        ];
         rng.shuffle(&mut numbers);
-        assert_eq!(numbers, vec![5, 1, 2, 3, 4]);
+        assert_eq!(
+            numbers,
+            vec![6, 8, 3, 4, 12, 10, 2, 7, 20, 11, 1, 16, 15, 13, 9, 14, 18, 5, 17, 19]
+        );
     }
 
     #[test]

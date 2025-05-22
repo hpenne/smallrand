@@ -271,6 +271,8 @@ mod tests {
         let mut rng = SmallRng::from_seed(12345678);
         assert_ne!(rng.random_u32(), rng.random_u32());
         assert_ne!(rng.random_u64(), rng.random_u64());
+        assert_ne!(rng.random::<u16>(), rng.random::<u16>());
+        assert_ne!(rng.random::<u32>(), rng.random::<u32>());
         assert_ne!(rng.random::<u64>(), rng.random::<u64>());
 
         let mut rng = SmallRng::from_entropy(&mut SplitMix::new(12345678));
@@ -319,7 +321,7 @@ mod tests {
     }
 
     #[test]
-    fn different_entroy_produces_different_random() {
+    fn different_entropy_produces_different_values() {
         let mut rng1 = SmallRng::from_entropy(&mut SplitMix::new(12345678));
         let mut rng2 = SmallRng::from_entropy(&mut SplitMix::new(87654321));
         assert_ne!(rng1.random_u64(), rng2.random_u64());

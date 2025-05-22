@@ -51,6 +51,15 @@ impl ChaCha12 {
     pub fn from_seed(seed: &[u8; 32], nonce: [u8; 8]) -> Self {
         Self(ChaCha::<12>::new(seed, nonce))
     }
+
+    pub(crate) fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
+    where
+        T: EntropySource,
+    {
+        let mut key = [0; 32];
+        entropy_source.fill(&mut key);
+        Self(ChaCha::<12>::new(&key, nonce))
+    }
 }
 
 impl Rng for ChaCha12 {
