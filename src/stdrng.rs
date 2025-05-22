@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn test_forwarding() {
         // Test that call forwarding isn't completely broken
-        // (the forwarded-to functions are tested in xoshiro.rs)
+        // (the forwarded-to functions are tested in chacha.rs)
         let mut rng =
             StdRng::from_entropy_and_nonce(&mut SplitMix::new(12345678), [1, 2, 3, 4, 5, 6, 7, 8]);
         assert_ne!(rng.random_u32(), rng.random_u32());
@@ -284,10 +284,6 @@ mod tests {
             i.next();
             assert_ne!(i.next(), i.next());
         }
-
-        // We can't do a similar test of iter_u8 here because the StdRng uses an internally
-        // generated nonce so the numbers are different for every run and hence there is a not
-        // insignificant likelihood that two consecutive u8 values will not be different.
 
         let mut a1 = [0_u8; 32];
         let mut a2 = [0_u8; 32];
@@ -315,9 +311,18 @@ mod tests {
     }
 
     #[test]
-    fn different_entropy_produces_different_values() {
+    fn same_entropy_and_different_nonce_produces_different_values() {
         let mut rng1 = StdRng::from_entropy(&mut SplitMix::new(12345678));
-        let mut rng2 = StdRng::from_entropy(&mut SplitMix::new(87654321));
+        let mut rng2 = StdRng::from_entropy(&mut SplitMix::new(12345678));
+        assert_ne!(rng1.random_u64(), rng2.random_u64());
+    }
+
+    #[test]
+    fn different_entropy_and_same_nonce_produces_different_values() {
+        let mut rng1 =
+            StdRng::from_entropy_and_nonce(&mut SplitMix::new(12345678), [1, 2, 3, 4, 5, 6, 7, 8]);
+        let mut rng2 =
+            StdRng::from_entropy_and_nonce(&mut SplitMix::new(87654321), [1, 2, 3, 4, 5, 6, 7, 8]);
         assert_ne!(rng1.random_u64(), rng2.random_u64());
     }
 }

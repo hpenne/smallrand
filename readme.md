@@ -9,8 +9,7 @@ Random number generation with absolutely minimal dependencies and no unsafe code
 This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand).
 It implements the same two algorithms as `rand`'s `SmallRng` and `StdRng` (Xoshiro256++ and ChaCha12),
 using the same aliases,
-and provides all basic functions you expect including uniformly distributed integers and floats in a user-specified
-range.
+and provides all basic functions you expect including uniformly distributed integers and floats in a user-specified range.
 Those who are sometimes frustrated by `rand`'s API might prefer `smallrand`'s API.
 
 The crate is intended to be easy to audit.
