@@ -6,13 +6,14 @@ smallrand
 
 Random number generation with absolutely minimal dependencies and no unsafe code.
 
-This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand), using the
-"xoshiro256++" (<https://prng.di.unimi.it>) and "ChaCha12" algorithms (https://cr.yp.to/chacha.html),
-which are also the ones used by `rand` for its `SmallRng` and `StdRng`,
-respectively.
-`smallrand` provides the same aliases for these two as `rand` does (`SmallRng` and `StdRng`).
+This crate provides a lightweight alternative to [`rand`](https://crates.io/crates/rand).
+It implements the same two algorithms as `rand`'s `SmallRng` and `StdRng` (Xoshiro256++ and ChaCha12),
+using the same aliases,
+and provides all basic functions you expect including uniformly distributed integers and floats in a user-specified range.
+Those who are sometimes frustrated by `rand`'s API might prefer `smallrand`'s API.
 
 The crate is intended to be easy to audit.
+It is small and uses no unsafe code.
 Its only dependency is [`getrandom`](https://crates.io/crates/getrandom), and that is only used on non-Linux/Unix
 platforms.
 

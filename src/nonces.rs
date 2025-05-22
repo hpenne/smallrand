@@ -45,3 +45,13 @@ pub fn nonce_u64() -> [u8; 8] {
     // is to increment and get the global counter:
     NONCE_COUNTER.fetch_add(1, Ordering::SeqCst).to_ne_bytes()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nonces_are_different() {
+        assert_ne!(nonce_u64(), nonce_u64());
+    }
+}

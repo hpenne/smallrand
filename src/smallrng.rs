@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use crate::entropy::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
@@ -259,5 +257,73 @@ impl SmallRng {
 impl Default for SmallRng {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Rng, SmallRng, SplitMix};
+
+    #[test]
+    fn test_forwarding() {
+        // Test that call forwarding isn't completely broken
+        // (the forwarded-to functions are tested in xoshiro.rs)
+        let mut rng = SmallRng::from_seed(12345678);
+        assert_ne!(rng.random_u32(), rng.random_u32());
+        assert_ne!(rng.random_u64(), rng.random_u64());
+        assert_ne!(rng.random::<u16>(), rng.random::<u16>());
+        assert_ne!(rng.random::<u32>(), rng.random::<u32>());
+        assert_ne!(rng.random::<u64>(), rng.random::<u64>());
+
+        let mut rng = SmallRng::from_entropy(&mut SplitMix::new(12345678));
+        assert_ne!(rng.range::<u32>(0..42), rng.range::<u32>(0..42));
+
+        {
+            let mut i = rng.iter::<u128>();
+            i.next();
+            assert_ne!(i.next(), i.next());
+        }
+
+        {
+            let mut i = rng.iter_u8();
+            i.next();
+            assert_ne!(i.next(), i.next());
+        }
+
+        let mut a1 = [0_u8; 32];
+        let mut a2 = [0_u8; 32];
+        rng.fill(&mut a1);
+        rng.fill(&mut a2);
+        assert_ne!(a1, a2);
+
+        a2 = a1;
+        rng.fill_u8(&mut a1);
+        rng.fill_u8(&mut a2);
+        assert_ne!(a1, a2);
+
+        a2 = a1;
+        rng.shuffle(&mut a2);
+        assert_ne!(a1, a2);
+    }
+
+    #[test]
+    fn from_seed_generates_reproducible_values() {
+        let mut rng1 = SmallRng::from_seed(12345678);
+        let mut rng2 = SmallRng::from_seed(12345678);
+        assert_eq!(rng1.random_u64(), rng2.random_u64());
+    }
+
+    #[test]
+    fn from_entropy_generates_reproducible_values() {
+        let mut rng1 = SmallRng::from_entropy(&mut SplitMix::new(12345678));
+        let mut rng2 = SmallRng::from_entropy(&mut SplitMix::new(12345678));
+        assert_eq!(rng1.random_u64(), rng2.random_u64());
+    }
+
+    #[test]
+    fn different_entropy_produces_different_values() {
+        let mut rng1 = SmallRng::from_entropy(&mut SplitMix::new(12345678));
+        let mut rng2 = SmallRng::from_entropy(&mut SplitMix::new(87654321));
+        assert_ne!(rng1.random_u64(), rng2.random_u64());
     }
 }

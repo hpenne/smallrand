@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(all(unix, feature = "std"))]
@@ -252,6 +251,16 @@ mod tests {
         assert_eq!(dev.seed::<u64>(), 9817491932198370423);
         assert_eq!(dev.seed::<u64>(), 4593380528125082431);
         assert_eq!(dev.seed::<u64>(), 16408922859458223821);
+    }
+
+    #[test]
+    fn test_ints_from_splitmix() {
+        let mut dev = SplitMix::new(1234567);
+        assert_eq!(u64::from_raw(&mut dev), 6457827717110365317);
+        assert_eq!(
+            u128::from_raw(&mut dev),
+            59088024217026436390996329455714204791
+        );
     }
 
     #[cfg(feature = "std")]

@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
@@ -343,7 +342,7 @@ range_from_rng! {isize, usize, u32}
 range_from_rng! {isize, usize, u64}
 
 impl RangeFromRng for f32 {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
     fn range_from_rng<T: Rng>(rng: &mut T, range: impl Into<GenerateRange<f32>>) -> Self {
         let GenerateRange {
             start,
@@ -365,13 +364,18 @@ impl RangeFromRng for f32 {
         // to make the integer value u128 if necessary.
         // It is theoretically possible that a u128 this still not enough, but the probability
         // of that many leading zero bits is more than small enough to ignore.
-        // Allways using u128 would be simpler, but not as fast.
+        // Always using u128 would be simpler, but not as fast.
         let r = rng.random::<u64>();
         let normalized = if (r >> 23) != 0 {
             (r as f32) / 2_f32.powi(64)
         } else {
+            // Make a random u128 by using 64 more random bits.
+            // Conversion via f64 may seem unnecessary, but going directly to f32
+            // is not possible without over/underflow problems.
+            // There are other ways around that, but this branch is not on the hot path
+            // so simplicity wins here.
             let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
-            (r as f32) / 2_f32.powi(128)
+            ((r as f64) / 2_f64.powi(128)) as f32
         };
         normalized * span + start
     }
@@ -400,11 +404,12 @@ impl RangeFromRng for f64 {
         // to make the integer value u128 if necessary.
         // It is theoretically possible that a u128 this still not enough, but the probability
         // of that many leading zero bits is more than small enough to ignore.
-        // Allways using u128 would be simpler, but not as fast.
+        // Always using u128 would be simpler, but not as fast.
         let r = rng.random::<u64>();
         let normalized = if (r >> 52) != 0 {
             (r as f64) / 2_f64.powi(64)
         } else {
+            // Make a random u128 by using 64 more random bits.
             let r = (u128::from(r) << 64) | u128::from(rng.random::<u64>());
             (r as f64) / 2_f64.powi(128)
         };
@@ -415,6 +420,7 @@ impl RangeFromRng for f64 {
 #[cfg(test)]
 mod tests {
     use crate::rng::Rng;
+    use crate::{SplitMix, Xoshiro256pp};
 
     struct CountingRng(pub u64);
 
@@ -591,27 +597,55 @@ mod tests {
     }
 
     #[test]
-    fn test_float_ranges() {
+    fn test_float_ranges_f64() {
         for leading_zeros in 0..64 {
             let mut rng = FloatRangeGenerator::new(leading_zeros);
             let value: f64 = rng.range(0.0..1.0);
-            let bytes = value.to_ne_bytes();
 
-            // The algorithm should always fill the manitissa, so the "DEADBEEF" pattern
-            // should always be in the same place:
+            // The algorithm should always fill the mantissa, so the (slightly modified)
+            // "DEADBEEF" pattern should always be in the same place:
+            let bytes = value.to_ne_bytes();
             assert_eq!(bytes[5], 0xea);
             assert_eq!(bytes[4], 0xdb);
             assert_eq!(bytes[3], 0xee);
             assert_eq!(bytes[2], 0xfd);
+            assert_eq!(bytes[1], 0xea);
+
+            // The exponent is a function of the number of leading zero bits:
+            let exponent = u64::from_be_bytes(value.to_be_bytes()) >> 52;
+            assert_eq!(exponent as usize, 1022 - leading_zeros);
+        }
+    }
+
+    #[test]
+    fn test_float_ranges_f32() {
+        for leading_zeros in 0..64 {
+            let mut rng = FloatRangeGenerator::new(leading_zeros);
+            let value: f32 = rng.range(0.0..1.0);
+
+            // The algorithm should always fill the mantissa,
+            // so the mantissa should always be the same with this generator:
+            let bytes = value.to_ne_bytes();
+            assert_eq!(bytes[0], 223);
+            assert_eq!(bytes[1], 86);
+
+            // The exponent is a function of the number of leading zero bits:
+            let exponent = u32::from_be_bytes(value.to_be_bytes()) >> 23;
+            assert_eq!(exponent as usize, 126 - leading_zeros);
         }
     }
 
     #[test]
     fn test_shuffle() {
-        let mut rng = CountingRng::new();
-        let mut numbers = vec![1, 2, 3, 4, 5];
+        let mut rng = Xoshiro256pp::from_entropy(&mut SplitMix::new(42));
+        let mut numbers = vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        ];
         rng.shuffle(&mut numbers);
-        assert_eq!(numbers, vec![5, 1, 2, 3, 4]);
+        assert_eq!(
+            numbers,
+            vec![6, 8, 3, 4, 12, 10, 2, 7, 20, 11, 1, 16, 15, 13, 9, 14, 18, 5, 17, 19]
+        );
     }
 
     #[test]

@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use crate::{EntropySource, Rng};
 
 /// An xoshiro256++ 1.0 (see <https://prng.di.unimi.it>) random generator.

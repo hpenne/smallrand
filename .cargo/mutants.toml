@@ -1,0 +1,19 @@
+exclude_re = [
+    "replace \\| with \\^ in <impl RangeFromRng for f32>::range_from_rng", # operators yeild same result for this code
+    "replace \\| with \\^ in <impl RangeFromRng for f64>::range_from_rng", # operators yeild same result for this code
+    "replace \\| with \\^ in <impl ValueFromRng for u128>::value_from_rng", # operators yeild same result for this code
+    "replace <impl ValueFromRng for usize>::value_from_rng -> Self with Default::default()", # cfg not enabled
+    "replace <impl ValueFromRng for u16>::value_from_rng -> Self with Default::default()", # generated mutation makes the range algorithm loop forever
+    "replace <impl ValueFromRng for u32>::value_from_rng -> Self with Default::default()", # generated mutation makes the range algorithm loop forever
+    "nonces.rs", # mutates cfg dependent code in a way that cannot be filtered out in other ways than this
+    "replace <impl Rng for Xoshiro256pp>::random_u32 -> u32", # generated mutation makes the range algorithm loop forever
+    "replace <impl Rng for Xoshiro256pp>::random_u64 -> u64", # generated mutation makes the range algorithm loop forever
+    "replace Xoshiro256pp::next_random -> u64", # generated mutation makes the range algorithm loop forever
+    "replace StdRng::from_entropy -> Self with Default::default", # the use of the nonce makes this unobservable
+    "replace < with > in <impl EntropySource for SplitMix>::fill", # mutation breaks the algorithm and makes it loop forever
+    "replace \\+= with \\*= in <impl EntropySource for SplitMix>::fill", # mutation breaks the algorithm and makes it loop forever
+    "replace < with == in <impl EntropySource for SplitMix>::fill", # mutation breaks the algorithm and makes it loop forever
+    "replace <impl EntropySource for GetRandom>::fill with \\(\\)", # cfg not enabled
+    "replace - with / in Rng::shuffle", # mutation does not affect output, which is correct.
+    "replace \\+= with \\*= in <impl Rng for ChaCha<ROUNDS>>::fill_u8", # mutation breaks the algorithm and makes it loop forever
+]

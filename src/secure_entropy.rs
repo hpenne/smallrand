@@ -259,7 +259,20 @@ mod tests {
     }
 
     #[test]
-    fn repetitions_are_detected1() {
+    fn three_repetitions_are_accepted() {
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![8, 9, 10, 11, 12, 13, 14, 15],
+            vec![
+                16, 17, 18, 19, 20, 20, 20, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+            ],
+        ]));
+        let mut output = [0_u8; 16];
+        entropy_source.fill(&mut output);
+    }
+
+    #[test]
+    fn four_repetitions_are_detected1() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
@@ -275,7 +288,7 @@ mod tests {
     }
 
     #[test]
-    fn repetitions_are_detected2() {
+    fn four_repetitions_are_detected2() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
