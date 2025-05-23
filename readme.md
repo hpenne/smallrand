@@ -1,5 +1,4 @@
-smallrand
-=========
+# smallrand
 
 [![Test Status](https://github.com/hpenne/smallrand/actions/workflows/rust.yml/badge.svg?event=push)](https://github.com/hpenne/smallrand/actions)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -19,8 +18,7 @@ platforms.
 
 It can also be built as no-std, in which case you'll have to provide your own seeds.
 
-Quick start
------------
+## Quick start
 
 ```rust
 use smallrand::StdRng;
@@ -31,8 +29,7 @@ let uniformly_distributed : u32 = rng.range(0..=42);
 let a_float : f64 = rng.range(0.0..42.0);
 ```
 
-FAQ
----
+## FAQ
 
 * Where does the seed come from?
     - By default, the seed is read from /dev/urandom on Linux-like platforms, and comes from the `getrandom` crate for
@@ -40,44 +37,41 @@ FAQ
       You can also implement your own `EntropySource` and use that to provide the seed.
 * Why don't you get the seeds from `hash_map::RandomState` like `fastrand` does and remove the dependency on
   `getrandom`?
-    - `RandomState` provides 128 bits of entropy at best, and only reads that from the system's entropy source at
-      startup. It then uses a no-secure algorithm to derive more seeds from that. This is not good enough as a default
-      for everyone. However, you can opt out of depending on `getrandom` by building without the `allow-getrandom`
-      feature flag, in which case `RandomState` will be used. Note that `/dev/urandom` is always used on Unix-like
-      platforms.
+    - `RandomState` reads 128 bits of entropy from the system's entropy source at startup.
+      It then uses a non-secure algorithm to derive more seeds from that.
+      This provides limited entropy and is not good enough as a default for everyone.
+      However, you can opt out of depending on `getrandom` by building without the `allow-getrandom` feature flag,
+      in which case `RandomState` _will_ be used.
+      Note that `/dev/urandom` is always used on Unix-like platforms, regardless.
 * Why would I choose this over `rand`?
     - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`,
       which contains a huge amount of unsafe code.
     - Its API encourages you to use thread local RNG instances. This creates unnecessary (thread) global state,
       which is almost always a bad idea.
-      Since it is thread local, you also get one RNG per thread in the thread pool if your
-      code is async.
+      Since it is thread local, you also get one RNG per thread in the thread pool if your code is async.
     - Unlike `rand`, `smallrand` crate does not require you to import any traits or anything else beyond the RNG you're
       using.
     - This crate has minimal dependencies and does not intend to change much, so you won't have to update it very often.
-    - This crate compiles faster than `rand` due to it smaller size and minimal dependencies.
+    - This crate compiles faster than `rand` due to its smaller size and minimal dependencies.
 * Why would I choose this over `fastrand`?
-    - `fastrand` uses Wyrand as its algorithm, which does not seem to be as respected as Xoshiro256++ (`SmallRng`).
-    - `smallrand` also offers ChaCha12 (`StdRng`), which has much better security properties than Wyrand.
-    - Just like `rand` its API encourages you to use thread local RNG instances.
+    - If you think the algorithms used are preferable to Wyrand.
     - `fastrand` gets its entropy from `std::collections::hash_map::RandomState`.
       This provides somewhat limited entropy (see above), although perhaps enough to initialize Wyrand given its smaller
       state.
+    - Just like `rand` its API encourages you to use thread local RNG instances.
 * How fast is this compared to `rand`?
-    - `smallrand` seems to be slightly faster overall on a Apple M1 (see below).
+    - `smallrand` seems to be slightly faster overall on a Apple M1 (see [Speed](#speed) below).
 * Is the `StdRng` cryptographically secure?
-    - Just as with StdRng in `rand` it might be (depending on how you define the term), but this not in any way
-      guaranteed.
+    - Just as with `StdRng` in `rand` it might be (depending on how you define the term), but this not in any way guaranteed.
       See also the next section.
 * Can this be used "no-std"?
     - Yes, please see the crate documentation for an example.
 
-Security
---------
+## Security
 
 `StdRng` uses the ChaCha crypto algorithm with 12 rounds.
 Current thinking seems to be that 8 rounds is sufficient ([Too Much Crypto](https://eprint.iacr.org/2019/1492.pdf)),
-but 12 currently used for extra security margin.
+but 12 is currently used for extra security margin.
 This algorithm is well respected and is currently unbroken, and is as such not predictable.
 It can likely be used to implement random generators that are cryptographically secure in practice,
 but please note that no guarantees of any kind are made that this particular implementation is cryptographically secure.
@@ -94,20 +88,20 @@ It has this in common with other algorithms of similar size and complexity, like
 `smallrand` makes a modest effort to detect fatal failures of the entropy source when creating an `StdRng` with `new()`,
 including the Health Tests of NIST SP 800-90B.
 
-Speed
------
+## Speed
 
-`SmallRng` from `smallrand` has been benchmarked against `SmallRng` from the `rand` crate (which uses the same
-algorithm) using  `criterion`.
-On my Apple M1, `smallrand` is equal in performance when generating u64 values, more than twice as fast generating
-uniformly distributed ranges of u64 values,
-and approximately 10% faster when filling a slice of bytes with random data.
+`smallrand` has been benchmarked against the v.0.9 of the `rand` crate using  `criterion` on a MacBook Air M1:
 
-`rand` is 7% faster at generating ranges of f64 values, which could be caused by `rand` using a slightly simpler
-algorithm which does not use the full available dynamic range of the mantissa when the generated value is close to zero.
+*Algorithm* | *Operation*    | *`rand`* | *`smallrand`*
+:---------------|:---------------|---------:|-----:
+SmallRng (Xoshiro256++) | generate u64   |  1.145ns |  1.141ns
+SmallRng (Xoshiro256++) | fill 256 bytes |  38.66ns | 35.99ns
+SmallRng (Xoshiro256++) | range (u64)    |   3.84ns | 1.46ns
+SmallRng (Xoshiro256++) | range (f64)    |   1.17ns | 1.24ns
+StdRng (Chacha 12) | fill 256 bytes |  254.8ns | 233.1ns
+StdRng (Chacha 12) | generate u64   |   8.64ns | 8.22ns
 
-`StdRng` from `smallrand` has been similarly benchmarked, and was approximately 4% faster than the same algorithm from
-`rand` when generating u64 values.
-
-`smallrand` has not been benchmarked against `fastrand`, but `fastrand` is expected to be faster as it uses an algorithm
-with smaller state.
+In these benchmarks, `smallrand` is a little faster overall than `rand` on this platform,
+although `rand` is a little faster at generating uniformly distributed f64 in a specified range.
+This could be because `smallrand` uses a different algorithm that uses the full dynamic range of the mantissa even for very small values (`rand` does not).
+On the other hand, `smallrand` is 2.6 times faster then `rand` at generating uniformly distributed u64 in a specified range (using `SmallRng`).
