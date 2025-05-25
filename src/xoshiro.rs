@@ -188,15 +188,6 @@ mod tests {
     }
 
     #[test]
-    fn xoshiro_generate_u8_fast() {
-        let mut rng = xoshiro();
-        assert_eq!(
-            vec![93, 91, 89, 95, 93, 91],
-            rng.iter_u8().take(6).collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
     fn xoshiro_generate_u16() {
         let mut rng = xoshiro();
         assert_eq!(

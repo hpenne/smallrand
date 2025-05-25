@@ -64,21 +64,6 @@ pub trait Rng {
         core::iter::from_fn(|| Some(self.random()))
     }
 
-    /// Provides an iterator that emits random u8 values.
-    /// Same as the generic variant, but more efficient.
-    /// If you want to fill a slice of u8 with values,
-    /// then the `fill_u8` function is even more performant.
-    ///
-    /// returns: An iterator that outputs random u8 values. Never None.
-    ///
-    #[inline]
-    fn iter_u8(&mut self) -> impl Iterator<Item = u8>
-    where
-        Self: Sized,
-    {
-        self.iter::<u64>().flat_map(u64::to_ne_bytes)
-    }
-
     /// Fills a mutable slice with random values.
     ///
     /// # Arguments
