@@ -143,28 +143,6 @@ impl StdRng {
         self.0.iter()
     }
 
-    /// Provides an iterator that emits random u8 values.
-    /// Same as the generic variant, but more efficient.
-    ///
-    /// returns: An iterator that outputs random u8 values. Never None.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #[cfg(feature = "std")]
-    /// {
-    /// let mut rng = smallrand::StdRng::new();
-    /// let random_values = rng.iter_u8().take(10).collect::<Vec<_>>();
-    /// }
-    /// ```
-    #[inline]
-    pub fn iter_u8(&mut self) -> impl Iterator<Item = u8> + '_
-    where
-        Self: Sized,
-    {
-        self.0.iter_u8()
-    }
-
     /// Fills a mutable slice with random values.
     ///
     /// # Arguments
@@ -275,12 +253,6 @@ mod tests {
 
         {
             let mut i = rng.iter::<u128>();
-            i.next();
-            assert_ne!(i.next(), i.next());
-        }
-
-        {
-            let mut i = rng.iter_u8();
             i.next();
             assert_ne!(i.next(), i.next());
         }

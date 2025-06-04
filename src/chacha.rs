@@ -115,7 +115,6 @@ impl<const ROUNDS: usize> ChaCha<ROUNDS> {
         s
     }
 
-    #[inline]
     fn generate_block(&mut self) {
         let mut x = [0_u32; 16];
         x.copy_from_slice(&self.state);
@@ -162,6 +161,7 @@ impl<const ROUNDS: usize> ChaCha<ROUNDS> {
 }
 
 impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
+    #[inline]
     fn random_u32(&mut self) -> u32 {
         const SIZE: usize = core::mem::size_of::<u32>();
         if self.inx + SIZE > self.buffer.len() {
@@ -173,6 +173,7 @@ impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
         value
     }
 
+    #[inline]
     fn random_u64(&mut self) -> u64 {
         const SIZE: usize = core::mem::size_of::<u64>();
         if self.inx + SIZE > self.buffer.len() {
@@ -184,6 +185,7 @@ impl<const ROUNDS: usize> Rng for ChaCha<ROUNDS> {
         value
     }
 
+    #[inline]
     fn fill_u8(&mut self, destination: &mut [u8])
     where
         Self: Sized,
