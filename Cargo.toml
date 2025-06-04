@@ -1,6 +1,6 @@
 [package]
 name = "smallrand"
-version = "0.2.1"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT-0"
