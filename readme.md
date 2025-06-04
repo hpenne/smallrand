@@ -99,7 +99,7 @@ SmallRng (Xoshiro256++) | fill 256 bytes |  38.66ns | 35.99ns
 SmallRng (Xoshiro256++) | range (u64)    |   3.84ns | 1.46ns
 SmallRng (Xoshiro256++) | range (f64)    |   1.17ns | 1.24ns
 StdRng (Chacha 12) | fill 256 bytes |  254.8ns | 233.1ns
-StdRng (Chacha 12) | generate u64   |   8.64ns | 8.22ns
+StdRng (Chacha 12) | generate u64   |   8.64ns | 7.32ns
 
 In these benchmarks, `smallrand` is a little faster overall than `rand` on this platform,
 although `rand` is a little faster at generating uniformly distributed f64 in a specified range.
