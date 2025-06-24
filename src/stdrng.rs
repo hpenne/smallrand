@@ -41,6 +41,9 @@ impl Rng for StdRng {
 impl StdRng {
     /// Creates a new random generator with a seed from a [SecureEntropy].
     /// This type of entropy source performs health tests on the system entropy source for extra security.
+    /// Note that [SecureEntropy] has a small false alarm rate, which can cause intermittent fuzz test errors
+    /// if a new [StdRng] instance is created for each fuzz test vector.
+    /// If you need to avoid this then create your instances with `from_entropy` and pass in a [DefaultEntropy] instead.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
@@ -226,6 +229,11 @@ impl StdRng {
     }
 }
 
+/// Creates a new random generator with a seed from a [SecureEntropy].
+/// This type of entropy source performs health tests on the system entropy source for extra security.
+/// Note that [SecureEntropy] has a small false alarm rate, which can cause intermittent fuzz test errors
+/// if a new [StdRng] instance is created for each fuzz test vector.
+/// If you need to avoid this then create your instances with `from_entropy` and pass in a [DefaultEntropy] instead.
 #[cfg(feature = "std")]
 impl Default for StdRng {
     fn default() -> Self {
