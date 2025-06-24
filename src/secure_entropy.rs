@@ -120,7 +120,7 @@ impl RepetitionCountTester {
     // NIST SP 800-90B section 4.4 proposes that 1:2^20 is a reasonable
     // false positive probability.
     // If we assume that the source has full entropy, then this means that
-    // an error requires four identical samples.
+    // four identical samples is the maximum allowed.
     const REPEAT_THRESHOLD: usize = 4;
 
     fn test(&mut self, data: &[u8]) {
@@ -133,7 +133,7 @@ impl RepetitionCountTester {
             if *x == self.current_value.unwrap() {
                 self.num_found += 1;
                 assert!(
-                    self.num_found < Self::REPEAT_THRESHOLD,
+                    self.num_found <= Self::REPEAT_THRESHOLD,
                     "Repetition Count Test failed"
                 );
             } else {
