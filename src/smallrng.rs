@@ -4,7 +4,7 @@ use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
 use crate::xoshiro::Xoshiro256pp;
 #[cfg(feature = "std")]
-use crate::SecureEntropy;
+use crate::DefaultEntropy;
 use crate::SplitMix;
 
 /// This is a numerically good PRNG if you need something small and fast
@@ -37,7 +37,7 @@ impl SmallRng {
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_entropy(&mut SecureEntropy::new()))
+        Self(Impl::from_entropy(&mut DefaultEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].
