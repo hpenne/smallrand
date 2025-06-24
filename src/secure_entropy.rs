@@ -259,12 +259,12 @@ mod tests {
     }
 
     #[test]
-    fn three_repetitions_are_accepted() {
+    fn four_repetitions_are_accepted() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
-                16, 17, 18, 19, 20, 20, 20, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                16, 17, 18, 19, 20, 20, 20, 20, 24, 25, 26, 27, 28, 29, 30, 31,
             ],
         ]));
         let mut output = [0_u8; 16];
@@ -272,12 +272,12 @@ mod tests {
     }
 
     #[test]
-    fn four_repetitions_are_detected1() {
+    fn five_repetitions_are_detected1() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
-                16, 17, 18, 19, 20, 20, 20, 20, 24, 25, 26, 27, 28, 29, 30, 31,
+                16, 17, 18, 19, 20, 20, 20, 20, 20, 25, 26, 27, 28, 29, 30, 31,
             ],
         ]));
         let mut output = [0_u8; 16];
@@ -288,13 +288,13 @@ mod tests {
     }
 
     #[test]
-    fn four_repetitions_are_detected2() {
+    fn five_repetitions_are_detected2() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
-                // The previous block ends with a 15, so that makes 4 in total
-                15, 15, 15, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                // The previous block ends with a 15, so that makes 5 in total
+                15, 15, 15, 15, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
             ],
         ]));
         let mut output = [0_u8; 16];
@@ -309,8 +309,8 @@ mod tests {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![
-                // The previous block ends with a 7, so that makes 4 in total
-                7, 7, 7, 11, 12, 13, 14, 15,
+                // The previous block ends with a 7, so that makes 5 in total
+                7, 7, 7, 7, 12, 13, 14, 15,
             ],
         ]));
         let mut output = [0_u8; 16];
