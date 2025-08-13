@@ -20,7 +20,7 @@ pub fn random_bytes(c: &mut Criterion) {
         g.bench_function(name, |b| {
             let mut buf = [0u8; 1024];
             b.iter(|| {
-                rng.fill(&mut buf);
+                rng.fill_u8(&mut buf);
                 black_box(buf);
             });
         });
