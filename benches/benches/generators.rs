@@ -1,6 +1,6 @@
 use core::time::Duration;
 use criterion::measurement::WallTime;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkGroup, Criterion};
+use criterion::{BenchmarkGroup, Criterion, black_box, criterion_group, criterion_main};
 use smallrand::*;
 
 criterion_group!(
