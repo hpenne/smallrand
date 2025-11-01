@@ -98,10 +98,6 @@ impl EntropySource for DevUrandom {
         self.dev_random
             .read_exact(destination)
             .expect("Failed to read from /dev/urandom");
-        assert!(
-            destination.iter().any(|v| *v != 0),
-            "Entropy source generated all zeros!"
-        );
     }
 }
 
@@ -129,15 +125,10 @@ impl Default for GetRandom {
 impl EntropySource for GetRandom {
     fn fill(&mut self, destination: &mut [u8]) {
         getrandom::fill(destination).expect("getrandom::fill failed");
-        assert!(
-            destination.iter().any(|v| *v != 0),
-            "getrandom generated all zeros!"
-        );
     }
 }
 
 /// This is an entropy source that generates seeds using std::collections::hash_map::RandomState.
-/// This is likely to equivalent to ´getrandom´ on most platforms.
 #[cfg(feature = "std")]
 #[derive(Default)]
 pub struct HashMapEntropy;
@@ -158,6 +149,11 @@ impl EntropySource for HashMapEntropy {
         for chunk in chunks.by_ref() {
             let value = RandomState::new().build_hasher().finish();
             chunk.copy_from_slice(&value.to_be_bytes());
+        }
+        let remainder = chunks.into_remainder();
+        if !remainder.is_empty() {
+            let value = RandomState::new().build_hasher().finish();
+            remainder.copy_from_slice(&value.to_be_bytes()[..remainder.len()]);
         }
     }
 }
@@ -219,14 +215,14 @@ mod tests {
     #[cfg(all(unix, feature = "std"))]
     #[test]
     fn generate_128_bit_seed_dev_random() {
-        let seed1: u64 = DevUrandom::new().seed();
-        let seed2: u64 = DevUrandom::new().seed();
+        let seed1: u128 = DevUrandom::new().seed();
+        let seed2: u128 = DevUrandom::new().seed();
         assert_ne!(seed1, seed2);
     }
 
     #[cfg(all(not(unix), feature = "allow-getrandom"))]
     #[test]
-    fn generate_64_bit_seed_with_gev_random() {
+    fn generate_64_bit_seed_with_get_random() {
         let seed1: u64 = GetRandom::new().seed();
         let seed2: u64 = GetRandom::new().seed();
         assert_ne!(seed1, seed2);

@@ -83,7 +83,7 @@ where
         self.entropy_source.fill(&mut new_random);
         assert_ne!(
             new_random, self.previous,
-            "The entropy source is broken (repeats data)"
+            "SecureEntropy: The entropy source is broken (repeats 8 byte data sequence)"
         );
 
         self.entropy_source.fill(destination);
@@ -94,7 +94,7 @@ where
             !destination
                 .windows(new_random.len())
                 .any(|candidate| candidate == new_random),
-            "The entropy source is broken (found earlier data as a substring in new data)"
+            "SecureEntropy: The entropy source is broken (found earlier data as a substring in new data)"
         );
 
         // Run the NIST SP 800-90B "Repetition Count Test" (see section 4.4.1)
@@ -126,15 +126,18 @@ impl RepetitionCountTester {
     fn test(&mut self, data: &[u8]) {
         let mut i = data.iter();
         if self.current_value.is_none() {
-            self.current_value = Some(*i.next().expect("This function requires a non-empty slice"));
+            self.current_value = match i.next() {
+                None => return,
+                Some(&value) => Some(value),
+            };
             self.num_found = 1;
         }
         for x in i {
-            if *x == self.current_value.unwrap() {
+            if Some(*x) == self.current_value {
                 self.num_found += 1;
                 assert!(
                     self.num_found <= Self::REPEAT_THRESHOLD,
-                    "Repetition Count Test failed"
+                    "SecureEntropy: Repetition Count Test failed"
                 );
             } else {
                 self.current_value = Some(*x);
@@ -147,9 +150,19 @@ impl RepetitionCountTester {
 // This is the "Adaptive Proportion Test" algorithm from NIST 800-90B section 4.4.2
 #[derive(Default)]
 struct AdaptiveProportionTester {
-    value_to_count: u8,
-    num_found: usize,
-    num_processed: usize,
+    state: AdaptiveProportionTesterState,
+}
+
+#[derive(Default)]
+enum AdaptiveProportionTesterState {
+    #[default]
+    InitializeWindow,
+    ProcessWindow {
+        value_to_count: u8,
+        num_found: usize,
+        num_processed: usize,
+    },
+    SkipNext,
 }
 
 impl AdaptiveProportionTester {
@@ -159,30 +172,46 @@ impl AdaptiveProportionTester {
     const WINDOW_SIZE: usize = 512;
 
     fn test(&mut self, data: &[u8]) {
-        for i in data {
-            match self.num_processed {
-                0 => {
-                    self.value_to_count = *i;
-                    self.num_found = 1;
-                    self.num_processed = 1;
-                }
-                Self::WINDOW_SIZE => {
-                    // We're throwing away this value,
-                    // to avoid aligning each block on a 512 byte boundary.
-                    self.num_processed = 0;
-                    self.num_found = 0;
-                }
-                _ => {
-                    if self.value_to_count == *i {
-                        self.num_found += 1;
+        for sample in data {
+            self.state = match self.state {
+                AdaptiveProportionTesterState::InitializeWindow => Self::new_window(*sample),
+                AdaptiveProportionTesterState::ProcessWindow {
+                    value_to_count,
+                    mut num_found,
+                    mut num_processed,
+                } => {
+                    if value_to_count == *sample {
+                        num_found += 1;
                     }
-                    self.num_processed += 1;
+                    num_processed += 1;
                     assert!(
-                        self.num_found < Self::MAX_NUM,
-                        "Adaptive Proportion Test failed"
+                        num_found < Self::MAX_NUM,
+                        "SecureEntropy: Adaptive Proportion Test failed"
                     );
+                    if num_processed == Self::WINDOW_SIZE {
+                        AdaptiveProportionTesterState::SkipNext
+                    } else {
+                        AdaptiveProportionTesterState::ProcessWindow {
+                            value_to_count,
+                            num_found,
+                            num_processed,
+                        }
+                    }
                 }
-            }
+                AdaptiveProportionTesterState::SkipNext => {
+                    // Skip this value to avoid aligning all windows on 512 bytes,
+                    // and set up to start a new value on the next sample:
+                    AdaptiveProportionTesterState::InitializeWindow {}
+                }
+            };
+        }
+    }
+
+    fn new_window(sample: u8) -> AdaptiveProportionTesterState {
+        AdaptiveProportionTesterState::ProcessWindow {
+            value_to_count: sample,
+            num_found: 1,
+            num_processed: 1,
         }
     }
 }
@@ -190,6 +219,7 @@ impl AdaptiveProportionTester {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
 
     #[test]
     fn secure_source_generates_non_zero_data() {
@@ -200,26 +230,26 @@ mod tests {
 
     #[derive(Default)]
     struct TestSource {
-        data: Vec<Vec<u8>>,
+        data: VecDeque<Vec<u8>>,
     }
 
     impl TestSource {
         fn new(data: Vec<Vec<u8>>) -> Self {
-            Self { data }
+            Self {
+                data: VecDeque::from(data),
+            }
         }
     }
 
     impl EntropySource for TestSource {
         fn fill(&mut self, destination: &mut [u8]) {
-            destination.copy_from_slice(&self.data.first().unwrap());
-            self.data.remove(0);
+            destination.copy_from_slice(&self.data.pop_front().unwrap());
         }
     }
 
     #[test]
     fn none_repeating_source_is_accepted() {
         let mut output = [0_u8; 16];
-        SecureEntropy::new().fill(&mut output);
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
@@ -233,7 +263,6 @@ mod tests {
     #[test]
     fn repeating_source_is_detected() {
         let mut output = [0_u8; 8];
-        SecureEntropy::new().fill(&mut output);
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![0, 1, 2, 3, 4, 5, 6, 7],
