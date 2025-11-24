@@ -1,10 +1,10 @@
 use crate::chacha::ChaCha12;
+#[cfg(feature = "std")]
+use crate::entropy::DefaultEntropy;
 use crate::entropy::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
-#[cfg(feature = "std")]
-use crate::SecureEntropy;
 
 /// This is the default random generator. It has more state than [SmallRng](crate::SmallRng)
 /// and is slower, but it has much better security properties.
@@ -39,22 +39,19 @@ impl Rng for StdRng {
 }
 
 impl StdRng {
-    /// Creates a new random generator with a seed from a [SecureEntropy].
+    /// Creates a new random generator with a seed from a [DefaultEntropy].
     /// This type of entropy source performs health tests on the system entropy source for extra security.
-    /// Note that [SecureEntropy] has a small false alarm rate, which can cause intermittent fuzz test errors
-    /// if a new [StdRng] instance is created for each fuzz test vector.
-    /// If you need to avoid this then create your instances with `from_entropy` and pass in a [DefaultEntropy] instead.
+    /// If you want basic security testing of your entropy then create your instances with `from_entropy`
+    /// and pass in a [SecureEntropy] instead.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_entropy(&mut SecureEntropy::new()))
+        Self(Impl::from_entropy(&mut DefaultEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].
-    /// Note that for uses that require security, it is recommended to
-    /// use the `new` function instead, which uses a [SecureEntropy] for entrpy.
     ///
     /// # Arguments
     ///
@@ -231,11 +228,7 @@ impl StdRng {
 
 #[cfg(feature = "std")]
 impl Default for StdRng {
-    /// Creates a new random generator with a seed from a [SecureEntropy].
-    /// This type of entropy source performs health tests on the system entropy source for extra security.
-    /// Note that [SecureEntropy] has a small false alarm rate, which can cause intermittent fuzz test errors
-    /// if a new [StdRng] instance is created for each fuzz test vector.
-    /// If you need to avoid this then create your instances with `from_entropy` and pass in a [DefaultEntropy] instead.
+    /// Creates a new random generator with a seed from a [DefaultEntropy].
     fn default() -> Self {
         Self::new()
     }
