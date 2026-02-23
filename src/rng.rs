@@ -1,7 +1,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
-use std::mem;
+use core::mem;
 
 /// This is the trait that all PRNGs must implement.
 /// It declares two functions that PRNGs must implement (to generate u32 and u64 random values),
@@ -16,7 +16,7 @@ pub trait Rng {
     /// Used by other functions as input.
     fn random_u64(&mut self) -> u64;
 
-    /// Generates a single random unsigned integer
+    /// Generates a single random integer or bool.
     ///
     /// # Arguments
     ///
@@ -34,7 +34,7 @@ pub trait Rng {
     /// Generates a single random integer or float in a specified range.
     /// The distribution is strictly uniform.
     /// The following types are supported:
-    /// u8, u16, u64, u128, usize, i8, i16, i64, i128, isize, f32, f64
+    /// u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64
     ///
     /// Any kind of range is supported for integers, but only `Range` for floats.
     ///
@@ -94,7 +94,7 @@ pub trait Rng {
     where
         Self: Sized,
     {
-        let mut blocks = destination.chunks_exact_mut(core::mem::size_of::<u64>());
+        let mut blocks = destination.chunks_exact_mut(mem::size_of::<u64>());
         for block in blocks.by_ref() {
             block.copy_from_slice(&self.random_u64().to_le_bytes());
         }
@@ -240,7 +240,7 @@ macro_rules! zero_based_range_from_rng_lemire {
             #[allow(clippy::cast_possible_truncation)]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
                 // Lemire's algorithm (https://lemire.me/blog/2016/06/30/fast-random-shuffling/)
-                const SIZE_IN_BITS: usize = core::mem::size_of::<$output_type>() * 8;
+                const SIZE_IN_BITS: usize = mem::size_of::<$output_type>() * 8;
                 let m =
                     <$bigger_type>::from(rng.random::<$output_type>()) * <$bigger_type>::from(span);
                 let mut high = (m >> SIZE_IN_BITS) as $output_type;
@@ -367,7 +367,7 @@ impl RangeFromRng for f32 {
         } = range.into();
         let span = end_inclusive - start;
 
-        // The simple algorith is just to generate an integer of the same size and convert it
+        // The simple algorithm is just to generate an integer of the same size and convert it
         // to a float while scaling it.  However, this does not utilize the full dynamic range
         // of the mantissa when the integer is small.  The rand crate seems to do this.
         // An ideal algorithm should draw a real number, then round that to the nearest float
@@ -407,7 +407,7 @@ impl RangeFromRng for f64 {
         } = range.into();
         let span = end - start;
 
-        // The simple algorith is just to generate an integer of the same size and convert it
+        // The simple algorithm is just to generate an integer of the same size and convert it
         // to a float while scaling it.  However, this does not utilize the full dynamic range
         // of the mantissa when the integer is small.  The rand crate seems to do this.
         // An ideal algorithm should draw a real number, then round that to the nearest float

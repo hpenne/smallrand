@@ -40,9 +40,10 @@ impl Rng for StdRng {
 
 impl StdRng {
     /// Creates a new random generator with a seed from a [DefaultEntropy].
-    /// This type of entropy source performs health tests on the system entropy source for extra security.
-    /// If you want basic security testing of your entropy then create your instances with `from_entropy`
-    /// and pass in a [SecureEntropy] instead.
+    /// If you want basic security testing of your entropy, then create your
+    /// instances with `from_entropy` and pass in a [SecureEntropy].
+    /// If you do, then please read the documentation of [SecureEntropy] for more
+    /// information about false positives.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
@@ -58,6 +59,7 @@ impl StdRng {
     /// * `entropy_source`: The entropy source to get the seed from
     ///
     /// returns: `StdRng`
+    #[must_use]
     pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
@@ -212,13 +214,13 @@ impl StdRng {
     #[inline]
     pub fn shuffle<T>(&mut self, target: &mut [T])
     where
-        T: Clone,
         Self: Sized,
     {
         self.0.shuffle(target);
     }
 
-    pub fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
+    #[cfg(test)]
+    fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
     where
         T: EntropySource,
     {

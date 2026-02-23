@@ -47,6 +47,7 @@ impl SmallRng {
     /// * `entropy_source`: The entropy source to get the seed from
     ///
     /// returns: [SmallRng]
+    #[must_use]
     pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
@@ -224,7 +225,6 @@ impl SmallRng {
     #[inline]
     pub fn shuffle<T>(&mut self, target: &mut [T])
     where
-        T: Clone,
         Self: Sized,
     {
         self.0.shuffle(target);
