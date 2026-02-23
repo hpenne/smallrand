@@ -27,6 +27,12 @@ use std::sync::{Mutex, OnceLock};
 ///
 /// These tests include the Health Test in Section 4.4 of NIST SP 800-90B.
 ///
+/// Beware that the Repetition Count Test has a false positive rate of 1:2^24.
+/// This may sound very unlikely, but if you construct a lot of random generators
+/// using this source in CI testing, then failures will happen eventually.
+/// You should use SecureEntropy only in production code,
+/// but not in random generators used in unit tests.
+///
 /// Note that [SecureEntropy] is just a proxy for a global shared entropy source,
 /// so tests for repeats of earlier samples still work even if
 /// a new [SecureEntropy] is created for each use.
@@ -37,12 +43,16 @@ pub struct SecureEntropy {
 
 impl SecureEntropy {
     /// Creates a new `SecureEntropy`.
-    /// Calls to `fill` will panic if the entropy source fails security tests.
+    ///
+    /// Note that if the source fails statistics tests during calls to `fill` then
+    /// it will panic.
+    /// Such a panic will poison the internal mutex protecting the global shared source,
+    /// causing future calls to `fill` (on any instance of SecureEntropy) to panic.
+    /// Consider using `new_with_failure_handler` if you need to handle failures differently.
     ///
     /// returns: A new `SecureEntropy`
     ///
     /// # Panics
-    /// Panics if the entropy source fails statistics tests on creation
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -55,14 +65,12 @@ impl SecureEntropy {
     /// # Arguments
     ///
     /// * `handler`: The failure handler.
-    ///   This function will be called if the entropy source fails security tests.
-    ///   The handler should not return,
-    ///   since the entropy source is broken and should not be used further.
+    ///   This function will be called (instead of panicking) if the entropy source
+    ///   fails security tests during calls to `fill`.
+    ///   The handler must log/report the error and terminate the program,
+    ///   since the global entropy source is broken and should not be used further.
     ///
     /// returns: A new `SecureEntropy`
-    ///
-    /// # panics
-    /// Panics if the entropy source fails statistics tests on creation
     #[must_use]
     pub fn new_with_failure_handler<T>(handler: T) -> Self
     where
@@ -94,6 +102,9 @@ impl EntropySource for SecureEntropy {
         {
             if let Some(handler) = mem::take(&mut self.failure_handler) {
                 handler(msg);
+            } else {
+                // This should never happen, as the handler should terminate
+                panic!("failure_handler already consumed (source has already failed previously)!");
             }
         }
     }
@@ -144,7 +155,7 @@ where
         // so the data we hold on to is not part of the data that we
         // return to the user. For security reasons, we do not want this code
         // to retain random data that could be used for encryption keys or other
-        // security critical uses by the client code.
+        // security-critical uses by the client code.
         let mut new_random = [0; 8];
         self.entropy_source.fill(&mut new_random);
         if new_random == self.previous {
@@ -195,8 +206,11 @@ struct RepetitionCountTester {
 impl RepetitionCountTester {
     // NIST SP 800-90B section 4.4 proposes that 1:2^20 is a reasonable
     // false positive probability.
-    // If we assume that the source has full entropy, then this means that
-    // four identical samples is the maximum allowed.
+    // If we assume that the source has full entropy (1/256 per value), then:
+    //   P(run of length k) = 1 / 2^(8*(k-1))
+    // We need to subtract 1 from k because the first sample is always equal to itself.
+    //   k=3 -> 1:2^16 (too likely), k=4 -> 1:2^24 (below 1:2^20)
+    // So the test must fail when a run of 4 identical samples is observed.
     const REPEAT_THRESHOLD: usize = 4;
 
     fn test(&mut self, data: &[u8]) -> Result<(), &'static str> {
@@ -211,7 +225,7 @@ impl RepetitionCountTester {
         for x in i {
             if Some(*x) == self.current_value {
                 self.num_found += 1;
-                if self.num_found > Self::REPEAT_THRESHOLD {
+                if self.num_found >= Self::REPEAT_THRESHOLD {
                     return Err("SecureEntropy: Repetition Count Test failed");
                 }
             } else {
@@ -361,7 +375,21 @@ mod tests {
     }
 
     #[test]
-    fn four_repetitions_are_accepted() {
+    fn three_repetitions_are_accepted() {
+        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![8, 9, 10, 11, 12, 13, 14, 15],
+            vec![
+                16, 17, 18, 19, 20, 20, 20, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+            ],
+        ]))
+        .unwrap();
+        let mut output = [0_u8; 16];
+        assert!(entropy_source.try_fill(&mut output).is_ok());
+    }
+
+    #[test]
+    fn four_repetitions_are_detected1() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
@@ -371,16 +399,17 @@ mod tests {
         ]))
         .unwrap();
         let mut output = [0_u8; 16];
-        assert!(entropy_source.try_fill(&mut output).is_ok());
+        assert!(entropy_source.try_fill(&mut output).is_err());
     }
 
     #[test]
-    fn five_repetitions_are_detected1() {
+    fn four_repetitions_are_detected2() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![8, 9, 10, 11, 12, 13, 14, 15],
             vec![
-                16, 17, 18, 19, 20, 20, 20, 20, 20, 25, 26, 27, 28, 29, 30, 31,
+                // The previous block ends with a 15, so that makes 4 in total
+                15, 15, 15, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
             ],
         ]))
         .unwrap();
@@ -389,27 +418,12 @@ mod tests {
     }
 
     #[test]
-    fn five_repetitions_are_detected2() {
-        let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
-            vec![0, 1, 2, 3, 4, 5, 6, 7],
-            vec![8, 9, 10, 11, 12, 13, 14, 15],
-            vec![
-                // The previous block ends with a 15, so that makes 5 in total
-                15, 15, 15, 15, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-            ],
-        ]))
-        .unwrap();
-        let mut output = [0_u8; 16];
-        assert!(entropy_source.try_fill(&mut output).is_err());
-    }
-
-    #[test]
-    fn repetitions_are_detected3() {
+    fn four_repetitions_are_detected3() {
         let mut entropy_source = EntropyChecker::new(TestSource::new(vec![
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![
                 // The previous block ends with a 7, so that makes 5 in total
-                7, 7, 7, 7, 12, 13, 14, 15,
+                7, 7, 7, 11, 12, 13, 14, 15,
             ],
         ]))
         .unwrap();
