@@ -247,7 +247,13 @@ macro_rules! zero_based_range_from_rng_lemire {
                 let mut low = m as $output_type;
                 if low < span {
                     let threshold = span.wrapping_neg() % span;
+                    let mut iterations = 0_u32;
                     while low < threshold {
+                        iterations = iterations.wrapping_add(1);
+                        debug_assert!(
+                            iterations < 128,
+                            "Lemire rejection loop did not terminate: RNG may be broken"
+                        );
                         let m = <$bigger_type>::from(rng.random::<$output_type>())
                             * <$bigger_type>::from(span);
                         high = (m >> SIZE_IN_BITS) as $output_type;

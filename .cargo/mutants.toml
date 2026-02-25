@@ -16,4 +16,5 @@ exclude_re = [
     "replace <impl EntropySource for GetRandom>::fill with \\(\\)", # cfg not enabled
     "replace - with / in Rng::shuffle", # mutation does not affect output, which is correct.
     "replace \\+= with \\*= in <impl Rng for ChaCha<ROUNDS>>::fill_u8", # mutation breaks the algorithm and makes it loop forever
+    "replace SecureEntropy::new_with_failure_handler -> Self with Default::default\\(\\)", # untestable via public API due to global OnceLock design
 ]

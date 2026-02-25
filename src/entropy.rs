@@ -265,4 +265,16 @@ mod tests {
         let mut dev = HashMapEntropy::new();
         assert_ne!(dev.seed::<u64>(), dev.seed::<u64>());
     }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_hash_map_entropy_fills_remainder() {
+        // Tests the remainder path: a buffer whose length is not a multiple of 8.
+        // If the remainder bytes were not written they would stay zero.
+        // The probability of five random bytes all being zero by chance is 1/2^40.
+        let mut dev = HashMapEntropy::new();
+        let mut output = [0_u8; 13]; // 8 full bytes + 5 remainder bytes
+        dev.fill(&mut output);
+        assert_ne!([0_u8; 5], output[8..]);
+    }
 }
