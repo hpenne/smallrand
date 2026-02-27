@@ -30,8 +30,8 @@ use std::sync::{Mutex, OnceLock};
 /// Beware that the Repetition Count Test has a false positive rate of 1:2^24.
 /// This may sound very unlikely, but if you construct a lot of random generators
 /// using this source in CI testing, then failures will happen eventually.
-/// You should use SecureEntropy only in production code,
-/// but not in random generators used in unit tests.
+/// This is particularly likely if you write a fuzzer where each iteration
+/// creates a new random generator using this source.
 ///
 /// Note that [SecureEntropy] is just a proxy for a global shared entropy source,
 /// so tests for repeats of earlier samples still work even if
