@@ -1,6 +1,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 use crate::ranges::GenerateRange;
+use core::mem;
 
 /// This is the trait that all PRNGs must implement.
 /// It declares two functions that PRNGs must implement (to generate u32 and u64 random values),
@@ -11,11 +12,11 @@ pub trait Rng {
     /// Used by other functions as input.
     fn random_u32(&mut self) -> u32;
 
-    /// Generates a random u32.
+    /// Generates a random u64.
     /// Used by other functions as input.
     fn random_u64(&mut self) -> u64;
 
-    /// Generates a single random unsigned integer
+    /// Generates a single random integer or bool.
     ///
     /// # Arguments
     ///
@@ -33,7 +34,7 @@ pub trait Rng {
     /// Generates a single random integer or float in a specified range.
     /// The distribution is strictly uniform.
     /// The following types are supported:
-    /// u8, u16, u64, u128, usize, i8, i16, i64, i128, isize, f32, f64
+    /// u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64
     ///
     /// Any kind of range is supported for integers, but only `Range` for floats.
     ///
@@ -93,14 +94,14 @@ pub trait Rng {
     where
         Self: Sized,
     {
-        let mut blocks = destination.chunks_exact_mut(core::mem::size_of::<u64>());
+        let mut blocks = destination.chunks_exact_mut(mem::size_of::<u64>());
         for block in blocks.by_ref() {
             block.copy_from_slice(&self.random_u64().to_le_bytes());
         }
         let bytes_remaining = blocks.into_remainder();
         if !bytes_remaining.is_empty() {
             bytes_remaining
-                .copy_from_slice(&self.random::<u64>().to_le_bytes()[..bytes_remaining.len()]);
+                .copy_from_slice(&self.random_u64().to_le_bytes()[..bytes_remaining.len()]);
         }
     }
 
@@ -113,7 +114,6 @@ pub trait Rng {
     #[inline]
     fn shuffle<T>(&mut self, target: &mut [T])
     where
-        T: Clone,
         Self: Sized,
     {
         // This is the forward version of the Fisher-Yates/Knuth shuffle:
@@ -133,6 +133,7 @@ pub trait ValueFromRng {
 }
 
 impl ValueFromRng for bool {
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() & 1 == 1
     }
@@ -140,6 +141,7 @@ impl ValueFromRng for bool {
 
 impl ValueFromRng for u8 {
     #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as Self
     }
@@ -147,6 +149,7 @@ impl ValueFromRng for u8 {
 
 impl ValueFromRng for u16 {
     #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as Self
     }
@@ -154,18 +157,21 @@ impl ValueFromRng for u16 {
 
 impl ValueFromRng for u32 {
     #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32()
     }
 }
 
 impl ValueFromRng for u64 {
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u64()
     }
 }
 
 impl ValueFromRng for u128 {
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         (u128::from(rng.random_u64()) << 64) | u128::from(rng.random_u64())
     }
@@ -174,22 +180,45 @@ impl ValueFromRng for u128 {
 impl ValueFromRng for usize {
     #[cfg(target_pointer_width = "16")]
     #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as usize
     }
 
     #[cfg(target_pointer_width = "32")]
     #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u32() as usize
     }
 
     #[cfg(target_pointer_width = "64")]
     #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
         rng.random_u64() as usize
     }
 }
+
+// Macro to implement ValueFromRng for signed types based on the unsigned implementations:
+macro_rules! value_from_rng_signed {
+    ($output_type: ty, $source_type: ty) => {
+        impl ValueFromRng for $output_type {
+            #[inline]
+            #[allow(clippy::cast_possible_wrap)]
+            fn value_from_rng<T: Rng>(rng: &mut T) -> Self {
+                <$source_type>::value_from_rng(rng) as $output_type
+            }
+        }
+    };
+}
+
+value_from_rng_signed!(i8, u8);
+value_from_rng_signed!(i16, u16);
+value_from_rng_signed!(i32, u32);
+value_from_rng_signed!(i64, u64);
+value_from_rng_signed!(i128, u128);
+value_from_rng_signed!(isize, usize);
 
 pub trait RangeFromRng {
     fn range_from_rng<T: Rng>(
@@ -211,14 +240,20 @@ macro_rules! zero_based_range_from_rng_lemire {
             #[allow(clippy::cast_possible_truncation)]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
                 // Lemire's algorithm (https://lemire.me/blog/2016/06/30/fast-random-shuffling/)
-                const SIZE_IN_BITS: usize = core::mem::size_of::<$output_type>() * 8;
+                const SIZE_IN_BITS: usize = mem::size_of::<$output_type>() * 8;
                 let m =
                     <$bigger_type>::from(rng.random::<$output_type>()) * <$bigger_type>::from(span);
                 let mut high = (m >> SIZE_IN_BITS) as $output_type;
                 let mut low = m as $output_type;
                 if low < span {
                     let threshold = span.wrapping_neg() % span;
+                    let mut iterations = 0_u32;
                     while low < threshold {
+                        iterations = iterations.wrapping_add(1);
+                        debug_assert!(
+                            iterations < 128,
+                            "Lemire rejection loop did not terminate: RNG may be broken"
+                        );
                         let m = <$bigger_type>::from(rng.random::<$output_type>())
                             * <$bigger_type>::from(span);
                         high = (m >> SIZE_IN_BITS) as $output_type;
@@ -237,7 +272,7 @@ zero_based_range_from_rng_lemire!(u64, u128);
 
 macro_rules! zero_based_range_from_rng {
     ($output_type: ty) => {
-        impl ZeroBasedRange for u128 {
+        impl ZeroBasedRange for $output_type {
             #[inline]
             fn zero_based_range_from_rng(rng: &mut impl Rng, span: Self) -> Self {
                 let mut random_value: Self = rng.random();
@@ -272,6 +307,9 @@ macro_rules! range_from_rng {
                 rng: &mut T,
                 range: impl Into<GenerateRange<$output_type>>,
             ) -> Self {
+                const _: () = {
+                    assert!(mem::size_of::<$generate_type>() >= mem::size_of::<$output_type>());
+                };
                 let GenerateRange {
                     start,
                     end_inclusive,
@@ -317,7 +355,7 @@ range_from_rng! {usize, usize, u32}
 #[cfg(target_pointer_width = "32")]
 range_from_rng! {usize, usize, u32}
 #[cfg(target_pointer_width = "64")]
-range_from_rng! {usize, usize, u32}
+range_from_rng! {usize, usize, u64}
 
 #[cfg(target_pointer_width = "16")]
 range_from_rng! {isize, usize, u32}
@@ -335,7 +373,7 @@ impl RangeFromRng for f32 {
         } = range.into();
         let span = end_inclusive - start;
 
-        // The simple algorith is just to generate an integer of the same size and convert it
+        // The simple algorithm is just to generate an integer of the same size and convert it
         // to a float while scaling it.  However, this does not utilize the full dynamic range
         // of the mantissa when the integer is small.  The rand crate seems to do this.
         // An ideal algorithm should draw a real number, then round that to the nearest float
@@ -350,7 +388,7 @@ impl RangeFromRng for f32 {
         // It is theoretically possible that a u128 this still not enough, but the probability
         // of that many leading zero bits is more than small enough to ignore.
         // Always using u128 would be simpler, but not as fast.
-        let r = rng.random::<u64>();
+        let r = rng.random_u64();
         let normalized = if (r >> 23) != 0 {
             (r as f32) / 2_f32.powi(64)
         } else {
@@ -375,7 +413,7 @@ impl RangeFromRng for f64 {
         } = range.into();
         let span = end - start;
 
-        // The simple algorith is just to generate an integer of the same size and convert it
+        // The simple algorithm is just to generate an integer of the same size and convert it
         // to a float while scaling it.  However, this does not utilize the full dynamic range
         // of the mantissa when the integer is small.  The rand crate seems to do this.
         // An ideal algorithm should draw a real number, then round that to the nearest float
@@ -390,7 +428,7 @@ impl RangeFromRng for f64 {
         // It is theoretically possible that a u128 this still not enough, but the probability
         // of that many leading zero bits is more than small enough to ignore.
         // Always using u128 would be simpler, but not as fast.
-        let r = rng.random::<u64>();
+        let r = rng.random_u64();
         let normalized = if (r >> 52) != 0 {
             (r as f64) / 2_f64.powi(64)
         } else {
@@ -629,7 +667,7 @@ mod tests {
         rng.shuffle(&mut numbers);
         assert_eq!(
             numbers,
-            vec![6, 8, 3, 4, 12, 10, 2, 7, 20, 11, 1, 16, 15, 13, 9, 14, 18, 5, 17, 19]
+            vec![17, 8, 20, 15, 1, 14, 2, 4, 11, 3, 16, 19, 18, 6, 5, 13, 7, 9, 10, 12]
         );
     }
 

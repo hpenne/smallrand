@@ -1,7 +1,7 @@
 #![allow(clippy::inline_always)]
 
 use crate::{nonces, EntropySource, Rng};
-use std::ops::BitXor;
+use core::ops::BitXor;
 
 #[allow(clippy::doc_markdown)]
 /// This is a random generator based on the ChaCha crypto algorithm with 12 rounds.
@@ -29,6 +29,7 @@ impl ChaCha12 {
     ///
     /// returns: [ChaCha12]
     ///
+    #[must_use]
     pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
@@ -52,7 +53,17 @@ impl ChaCha12 {
         Self(ChaCha::<12>::new(seed, nonce))
     }
 
-    pub(crate) fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
+    /// Creates a new [ChaCha12] random generator using a seed from an [EntropySource].
+    ///
+    /// # Arguments
+    ///
+    /// * `entropy_source`: The source of the seed
+    /// * `nonce`: The nonce to initialize with
+    ///
+    /// returns: [ChaCha12]
+    ///
+    #[must_use]
+    pub fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
     where
         T: EntropySource,
     {

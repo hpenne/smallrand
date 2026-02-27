@@ -44,8 +44,7 @@ let a_float : f64 = rng.range(0.0..42.0);
       in which case `RandomState` _will_ be used.
       Note that `/dev/urandom` is always used on Unix-like platforms, regardless.
 * Why would I choose this over `rand`?
-    - `rand` is large and difficult to audit. Its dependencies (as of version 0.9) include `zerocopy`,
-      which contains a huge amount of unsafe code.
+    - `rand` is large and difficult to audit.
     - Its API encourages you to use thread local RNG instances. This creates unnecessary (thread) global state,
       which is almost always a bad idea.
       Since it is thread local, you also get one RNG per thread in the thread pool if your code is async.
@@ -60,7 +59,8 @@ let a_float : f64 = rng.range(0.0..42.0);
       state.
     - Just like `rand` its API encourages you to use thread local RNG instances.
 * How fast is this compared to `rand`?
-    - `smallrand` seems to be slightly faster overall on a Apple M1 (see [Speed](#speed) below).
+    - They seem virtually identical in speed when using `SmallRng` (see [Speed](#speed) below).
+    - When using `StdRng`, `rand` is almost 2x faster due to a vectorized ChaCha implementation using unsafe code and a little more memory.
 * Is the `StdRng` cryptographically secure?
     - Just as with `StdRng` in `rand` it might be (depending on how you define the term), but this not in any way guaranteed.
       See also the next section.
@@ -85,21 +85,23 @@ An attacker that is able to observe its output will be able to calculate its int
 which means that it is not cryptographically secure.
 It has this in common with other algorithms of similar size and complexity, like PCG and Wyrand.
 
-`smallrand` makes a modest effort to detect fatal failures of the entropy source when creating an `StdRng` with `new()`,
+`StdRng` initializes the nonce bytes of the ChaCha state vector (`rand` sets them to zeroes), using simple alternative sources of entropy (time, global counter, `std::collections::hash_map::RandomState`), to provide some basic protection against failure of the normal entropy source.
+
+`smallrand` makes a reasonable effort to detect fatal failures of the entropy source if you seed your RNG using `SecureEntropy`,
 including the Health Tests of NIST SP 800-90B.
 
 ## Speed
 
-`smallrand` has been benchmarked against the v.0.9 of the `rand` crate using  `criterion` on a MacBook Air M1:
+`smallrand` has been benchmarked against the v.0.10 of the `rand` crate using  `criterion` on a MacBook Air M1:
 
 *Algorithm* | *Operation*    | *`rand`* | *`smallrand`*
 :---------------|:---------------|---------:|-----:
-SmallRng (Xoshiro256++) | generate u64   |  1.145ns |  1.141ns
-SmallRng (Xoshiro256++) | fill 256 bytes |  38.66ns | 35.99ns
-SmallRng (Xoshiro256++) | range (u64)    |   3.84ns | 1.46ns
-SmallRng (Xoshiro256++) | range (f64)    |   1.17ns | 1.24ns
-StdRng (Chacha 12) | fill 256 bytes |  254.8ns | 233.1ns
-StdRng (Chacha 12) | generate u64   |   8.64ns | 7.32ns
+SmallRng (Xoshiro256++) | generate u64   |   1.14ns |  1.14ns
+SmallRng (Xoshiro256++) | fill 256 bytes |  36.01ns | 36.01ns
+SmallRng (Xoshiro256++) | range (u64)    |   1.54ns | 1.46ns
+SmallRng (Xoshiro256++) | range (f64)    |   1.16ns | 1.24ns
+StdRng (Chacha 12) | fill 256 bytes |  125.7ns | 232.3ns
+StdRng (Chacha 12) | generate u64   |   4.25ns | 7.34ns
 
 In these benchmarks, `smallrand` is a little faster overall than `rand` on this platform,
 although `rand` is a little faster at generating uniformly distributed f64 in a specified range.

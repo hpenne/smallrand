@@ -1,10 +1,10 @@
 use crate::chacha::ChaCha12;
+#[cfg(feature = "std")]
+use crate::entropy::DefaultEntropy;
 use crate::entropy::EntropySource;
 use crate::ranges::GenerateRange;
 use crate::rng::Rng;
 use crate::rng::{RangeFromRng, ValueFromRng};
-#[cfg(feature = "std")]
-use crate::SecureEntropy;
 
 /// This is the default random generator. It has more state than [SmallRng](crate::SmallRng)
 /// and is slower, but it has much better security properties.
@@ -39,28 +39,27 @@ impl Rng for StdRng {
 }
 
 impl StdRng {
-    /// Creates a new random generator with a seed from a [SecureEntropy].
-    /// This type of entropy source performs health tests on the system entropy source for extra security.
-    /// Note that [SecureEntropy] has a small false alarm rate, which can cause intermittent fuzz test errors
-    /// if a new [StdRng] instance is created for each fuzz test vector.
-    /// If you need to avoid this then create your instances with `from_entropy` and pass in a [DefaultEntropy] instead.
+    /// Creates a new random generator with a seed from a [DefaultEntropy].
+    /// If you want basic security testing of your entropy, then create your
+    /// instances with `from_entropy` and pass in a [SecureEntropy].
+    /// If you do, then please read the documentation of [SecureEntropy] for more
+    /// information about false positives.
     ///
     /// returns: `StdRng`
     #[cfg(feature = "std")]
     #[must_use]
     pub fn new() -> Self {
-        Self(Impl::from_entropy(&mut SecureEntropy::new()))
+        Self(Impl::from_entropy(&mut DefaultEntropy::new()))
     }
 
     /// Creates a new random generator with a seed from an [EntropySource].
-    /// Note that for uses that require security, it is recommended to
-    /// use the `new` function instead, which uses a [SecureEntropy] for entrpy.
     ///
     /// # Arguments
     ///
     /// * `entropy_source`: The entropy source to get the seed from
     ///
     /// returns: `StdRng`
+    #[must_use]
     pub fn from_entropy<T>(entropy_source: &mut T) -> Self
     where
         T: EntropySource,
@@ -215,13 +214,13 @@ impl StdRng {
     #[inline]
     pub fn shuffle<T>(&mut self, target: &mut [T])
     where
-        T: Clone,
         Self: Sized,
     {
         self.0.shuffle(target);
     }
 
-    pub fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
+    #[cfg(test)]
+    fn from_entropy_and_nonce<T>(entropy_source: &mut T, nonce: [u8; 8]) -> Self
     where
         T: EntropySource,
     {
@@ -231,11 +230,7 @@ impl StdRng {
 
 #[cfg(feature = "std")]
 impl Default for StdRng {
-    /// Creates a new random generator with a seed from a [SecureEntropy].
-    /// This type of entropy source performs health tests on the system entropy source for extra security.
-    /// Note that [SecureEntropy] has a small false alarm rate, which can cause intermittent fuzz test errors
-    /// if a new [StdRng] instance is created for each fuzz test vector.
-    /// If you need to avoid this then create your instances with `from_entropy` and pass in a [DefaultEntropy] instead.
+    /// Creates a new random generator with a seed from a [DefaultEntropy].
     fn default() -> Self {
         Self::new()
     }
