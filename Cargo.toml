@@ -19,4 +19,4 @@ allow-getrandom = ["getrandom"]
 
 [dependencies]
 [target.'cfg(not(unix))'.dependencies]
-getrandom = { version = "0.3.2", optional = true }
+getrandom = { version = "0.4.2", optional = true }
